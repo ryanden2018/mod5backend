@@ -30,7 +30,7 @@ app.post('/api/users', function(req,res) {
     if(err) {
       return res.status(500).json({error:"error creating hash"})
     } else {
-      User.create({username:req.body.username,
+      User.User.create({username:req.body.username,
                    passwordDigest: hash})
       .then(
         () => {
@@ -48,7 +48,7 @@ app.post('/api/users', function(req,res) {
 
 // login
 app.post('/api/login', function(req,res) {
-  User.findAll({where:{username:req.body.username}})
+  User.User.findAll({where:{username:req.body.username}})
   .then(
     users => {
       if(users.length > 0) {
@@ -92,7 +92,7 @@ app.get("/api/loggedin", function(req,res) {
 
 app.patch('/api/users/:username/password',
   (req,res) => {
-    User.findAll({where:{username:req.params.username}})
+    User.User.findAll({where:{username:req.params.username}})
     .then(
       users => {
         if(users.length > 0) {
@@ -109,7 +109,7 @@ app.patch('/api/users/:username/password',
                       if(err) {
                         return res.status(500).json({error:"error creating hash"})
                       } else {
-                        return User.update({passwordDigest:hash},{where:{id:user.id}})
+                        return User.User.update({passwordDigest:hash},{where:{id:user.id}})
                         .then( () => res.json({success:"operation completed"}) )
                         .catch( () => res.json({failed:"operation failed"}) );
                       }
