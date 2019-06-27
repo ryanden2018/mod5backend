@@ -51,10 +51,11 @@ async function getId(username) {
 // extract authorization token from req
 function getToken(req,res) {
   var cookies = new Cookies(req,res,{keys:[COOKIESECRET]});
-  return cookies.get('token', {signed:true});
+  return cookies.get('rmbrAuthToken', {signed:true});
 }
 
 // create account (bcrypt)
+// req.body: {username:..., password:...}
 app.post('/api/users', function(req,res) {
   bcrypt.hash(req.body.password, 10, function(err,hash) {
     if(err) {
@@ -77,6 +78,7 @@ app.post('/api/users', function(req,res) {
 
 
 // login
+// req.body: {username:..., password:...}
 app.post('/api/login', function(req,res) {
   User.User.findAll({where:{username:req.body.username}})
   .then(
@@ -96,7 +98,7 @@ app.post('/api/login', function(req,res) {
               }, SECRET,
               { expiresIn: '2h' });
               var cookies = new Cookies(req,res,{keys:[COOKIESECRET]})
-              cookies.set('token', token, {signed: true});
+              cookies.set('rmbrAuthToken', token, {signed: true, httpOnly: true, overwrite: true});
               return res.status(200).json({success: "Approved"})
             }
         });
@@ -126,13 +128,13 @@ app.get("/api/loggedin", function(req,res) {
 });
 
 // logout from app
-app.delete("/api/logout", function(req,res) {
+app.delete("/api/login", function(req,res) {
   var cookies = new Cookies(req,res,{keys:[COOKIESECRET]})
-  cookies.set('token', "", {signed: true});
+  cookies.set('rmbrAuthToken', "", {signed: true,httpOnly:true,overwrite:true});
   res.json({success:"logged out"});
 });
 
-// delete a user
+// delete a user (must be logged in)
 app.delete("/api/users/:username", function(req,res) {
   authorizeUser(req,res,req.params.username,
     () => {
@@ -154,6 +156,7 @@ app.delete("/api/users/:username", function(req,res) {
 });
 
 // change user's password
+// req.body: {currentPassword: ..., newPassword: ...}
 app.patch('/api/users/:username/password',
   (req,res) => {
     User.User.findAll({where:{username:req.params.username}})
@@ -199,6 +202,8 @@ app.patch('/api/users/:username/password',
 
 
 // check that the user is authorized to access the content
+// if username is null, do not check equality of usernames (in which case it should
+// be checked in the callback)
 function authorizeUser(req,res,username,successCallback) {
   jwt.verify(getToken(req,res),SECRET,
     (err,results) => {
@@ -238,6 +243,7 @@ app.get("/api/users/:username/rooms", (req,res) => {
 });
 
 // post room
+// req.body: {room: {length:..., width:..., height:...} }
 app.post("/api/rooms", (req,res) => {
   authorizeUser(req,res,null, async (username) => {
     var id = await getId(username);
@@ -250,7 +256,7 @@ app.post("/api/rooms", (req,res) => {
 });
 
 // patch room
-
+// req.body: {room: {...}}
 app.patch("/api/rooms/:id", (req,res) => {
   authorizeUser(req,res,null, async (username) => {
     var id = await getId(username);
@@ -337,7 +343,7 @@ app.get("/api/rooms/:id/furnishings", (req,res) => {
 });
 
 // post furnishing
-
+// req.body: {furnishing: { type: ..., posx: ..., posy: ..., theta: ..., roomId: ..., color: ... } }
 app.post("/api/furnishings", (req,res) => {
   authorizeUser(req,res,null, async (username) => {
     var userId = await getId(username);
@@ -355,7 +361,7 @@ app.post("/api/furnishings", (req,res) => {
 });
 
 // patch furnishing
-
+// req.body: {furnishing: { ... }}
 app.patch("/api/furnishings/:id", (req,res) => {
   authorizeUser(req,res,null, (username) => {
     Furnishing.Furnishing.findByPk(req.params.id)
@@ -366,7 +372,7 @@ app.patch("/api/furnishings/:id", (req,res) => {
         .then( users => {
           var user = users.find(user => user.username === username);
           if(user) {
-            furnishing.update(req.body.furnishing)
+            furnishing.update({...req.body.furnishing, roomId: room.id})
             .then( furnishing => res.status(200).json(furnishing) )
             .catch( () => res.status(500).json({error:"Could not update furnishing"}) );
           } else {
@@ -405,7 +411,7 @@ app.delete("/api/furnishings/:id", (req,res) => {
 });
 
 // post UserRoom (=== add collaborator) ... owner only
-
+// req.body: {recipientUsername: ..., roomId: ...}
 app.post("/api/UserRooms", (req,res) => {
   authorizeUser(req,res,null, async (username) => {
     var ownerId = await getId(username);
@@ -430,7 +436,7 @@ app.post("/api/UserRooms", (req,res) => {
 });
 
 // patch UserRoom (=> confirm collaborator)
-
+// body: {roomId: ..., confirmed: ...}
 app.patch("/api/UserRooms", (req,res) => {
   authorizeUser( req, res, null, async (username) => {
     var userId = await getId(username);
