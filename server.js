@@ -26,18 +26,71 @@ const COOKIESECRET = process.env.COOKIESECRET;
 
 // socket.io
 
-function verifyAuthCookie(socket,callback) {
+function verifyAuthCookie(socket,successCallback,failureCallback = () => { }) {
   var cookies = cookie.parse(socket.request.headers.cookie);
   if(cookies.rmbrAuthToken) {
     jwt.verify(cookies.rmbrAuthToken,SECRET, (err,results) => {
       if(results && !err) {
-        callback(results.username);
+        successCallback(results.id);
+      } else {
+        failureCallback();
       }
     });
+  } else {
+    failureCallback();
   }
 }
 
 io.on("connection", function(socket) {
+  // user requests a lock on furniture item
+  // payload: furnishingId
+  socket.on("lockRequest", function(payload) {
+    verifyAuthCookie(socket, userId => {
+      FurnishingLock.FurnishingLock.create({userId:userId,furnishingId:payload.furnishingId})
+      .then(() => socket.emit("lockResponse","approved"))
+      .catch(() => socket.emit("lockResponse","denied"));
+    }, () => {
+      socket.emit("lockResponse","denied");
+    });
+  });
+
+  // user releases lock on furniture item
+  // payload: furnishing (new furnishing properties)
+  socket.on("lockRelease", function(payload) {
+    verifyAuthCookie(socket, userId => {
+      FurnishingLock.FurnishingLock.findAll({ where: {userId: userId} })
+      .then( locks => {
+        locks.forEach( lock => {
+          lock.destroy({force:true}).catch(() => { });
+        });
+      }).catch( () => { } );
+      if(payload && payload.furnishing) {
+        socket.to(`room${payload.furnishing.roomId}`).emit("update",payload);
+      }
+    });
+  });
+
+  // user creates a furniture item (notify other users)
+  // payload: furnishing (as returned by DB's create operation, including UUID and roomId)
+  socket.on("createFurnishing", function(payload) {
+    verifyAuthCookie(socket, userId => {
+      if(payload && payload.furnishing) {
+        socket.to(`room${payload.furnishing.roomId}`).emit("create",payload);
+      }
+    });
+  });
+
+
+  // user deletes a furniture item (notify other users)
+  // payload: furnishingId, roomId
+  socket.on("deleteFurnishing", function(payload) {
+    verifyAuthCookie(socket, userId => {
+      if(payload && payload.furnishing) {
+        socket.to(`room${payload.roomId}`).emit("delete",payload.furnishingId);
+      }
+    });
+  });
+
 });
 
 
