@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const app = express();
 const http = require('http').createServer(app);
 const Cookies = require('cookies');
+const cookie = require('cookie');
 const io = require('socket.io')(http);
 require('dotenv').config();
 const bcrypt = require('bcrypt');
@@ -25,8 +26,18 @@ const COOKIESECRET = process.env.COOKIESECRET;
 
 // socket.io
 
+function verifyAuthCookie(socket,callback) {
+  var cookies = cookie.parse(socket.request.headers.cookie);
+  if(cookies.rmbrAuthToken) {
+    jwt.verify(cookies.rmbrAuthToken,SECRET, (err,results) => {
+      if(results && !err) {
+        callback(results.username);
+      }
+    });
+  }
+}
+
 io.on("connection", function(socket) {
-  console.log(socket.request.headers.cookie);
 });
 
 

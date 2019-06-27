@@ -9,7 +9,9 @@ const sequelize = new Sequelize('roombuilder','postgres','abcdef',
 
 class FurnishingLock extends Sequelize.Model { }
 FurnishingLock.init( {
-}, { sequelize, modelName: 'furnishing' } );
+  furnishingId: { type: Sequelize.UUID, allowNull: false, unique: true },
+  userId: { type: Sequelize.INTEGER, allowNull: false, unique: true}
+}, { sequelize, modelName: 'furnishingLock' } );
 
 
 FurnishingLock.belongsTo(Furnishing.Furnishing)
