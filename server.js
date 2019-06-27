@@ -114,9 +114,13 @@ app.get("/api/loggedin", function(req,res) {
   jwt.verify(getToken(req,res),SECRET,
     (err,results) => {
       if(err) {
-        res.json({failed: "Not logged in"})
+        res.json({status: "Not logged in"})
       } else {
-        res.json({user:results.username})
+        if(results) {
+          res.json({status:`Logged in as ${results.username}`})
+        } else {
+          res.json({status: "Not logged in"})
+        }
       }
   });
 });
@@ -136,13 +140,14 @@ app.delete("/api/users/:username", function(req,res) {
       .then( users => {
         if(users.length > 0) {
           var user = users[0];
-          user.destroy({force:true});
-          res.json({success:"operation succeeded"});
+          user.destroy({force:true})
+          .then( () => res.status(200).json({success:"operation succeeded"}) )
+          .catch( () => res.status(500).json({error:"could not delete user"}) );
         } else {
-          res.json({error:"operation failed"});
+          res.status(401).json({error:"Unauthorized"});
         }
       }).catch(() => {
-        res.json({error:"operation failed"});
+        res.status(500).json({error:"Error querying users"});
       })
     }
   );
@@ -161,7 +166,7 @@ app.patch('/api/users/:username/password',
               bcrypt.compare( req.body.currentPassword, user.passwordDigest,
                 (err,result) => {
                   if(err) {
-                    return res.status(401).json({failed: "Unauthorized"})
+                    return res.status(401).json({error: "Unauthorized"})
                   }
                   if(result) {
                     bcrypt.hash( req.body.newPassword, 10, (err,hash) => {
@@ -170,11 +175,11 @@ app.patch('/api/users/:username/password',
                       } else {
                         return User.User.update({passwordDigest:hash},{where:{id:user.id}})
                         .then( () => res.json({success:"operation completed"}) )
-                        .catch( () => res.json({failed:"operation failed"}) );
+                        .catch( () => res.status(500).json({error:"could not update user"}) );
                       }
                     });
                   } else {
-                    return res.status(401).json({failed:'Unauthorized'});
+                    return res.status(401).json({error:'Unauthorized'});
                   }
                 }
               );
@@ -200,7 +205,7 @@ function authorizeUser(req,res,username,successCallback) {
       if(err) {
         res.status(401).json({failed:"Unauthorized access"});
       } else {
-        if( username && (username === results.username)) {
+        if( !username || (username === results.username)) {
           successCallback(results.username);
         } else {
           res.status(401).json({failed: "Unauthorized access"});
@@ -213,7 +218,7 @@ function authorizeUser(req,res,username,successCallback) {
 
 // API ROUTES
 
-// get rooms
+// get rooms for particular user
 app.get("/api/users/:username/rooms", (req,res) => {
   authorizeUser(req,res,req.params.username, () => {
     User.User.findAll({where:{username:req.params.username}})
@@ -222,11 +227,13 @@ app.get("/api/users/:username/rooms", (req,res) => {
         var user = users[0];
         user.getRooms().then( rooms => {
           res.json(rooms);
-        });
+        })
+        .catch( () => res.status(500).json({error: "error finding rooms"}) );
       } else {
-        res.json({failed:"operation failed"});
+        res.status(500).json({error:"error finding user"});
       }
     })
+    .catch( () => res.status(500).json({error:"error finding user"}) );
   });
 });
 
@@ -235,36 +242,240 @@ app.post("/api/rooms", (req,res) => {
   authorizeUser(req,res,null, async (username) => {
     var id = await getId(username);
     Room.Room.create(req.body.room).then( room => {
-      UserRoom.UserRoom.create( {userId: id, roomId: room.id, isOwner: true} );
+      UserRoom.UserRoom.create( {userId: id, roomId: room.id, isOwner: true, confirmed: true} )
+      .catch( () => res.status(500).json({error:"could not create association"}) );
       res.json(room) 
-    });
+    }).catch( () => res.status(500).json({error:"could not create room"}) );
   });
 });
 
 // patch room
 
+app.patch("/api/rooms/:id", (req,res) => {
+  authorizeUser(req,res,null, async (username) => {
+    var id = await getId(username);
+    Room.Room.findByPk( req.params.id )
+    .then( room => {
+      room.getUsers({where: {userId: id}})
+      .then( users => {
+        if(users.length > 0) {
+          room.update(req.body.room)
+          .then( () => res.json(room) )
+          .catch( () => res.status(500).json({error:"could not update room"}) );
+        } else {
+          res.status(500).json({error:"user not found in room collaborators list"});
+        }
+      }).catch( () => res.status(500).json({error:"user not found in room collaborators list"}) );
+    }).catch( () => res.status(404).json({error:"room not found"}) );
+  });
+});
+
+
+
 // delete room (owner only)
+
+app.delete("/api/rooms/:id", (req,res) => {
+  Room.Room.findByPk(req.params.id)
+  .then( room => {
+    UserRoom.UserRoom.findAll({where: {roomId: room.id, isOwner: true}})
+    .then( userRooms => {
+      if(userRooms.length > 0) {
+        User.User.findByPk(userRooms.userId)
+        .then( user => {
+          authorizeUser(req,res,user.username, () => {
+            room.destroy({force:true})
+            .then( () => res.status(200).json({success: "operation completed"}) )
+            .catch( () => res.status(500).json({error:"could not delete room"}) );
+          });
+        }).catch( () => res.status(500).json({error:"could not get username"}) );
+      } else {
+        res.status(500).json({error:"could not get association"});
+      }
+    }).catch( () => res.status(500).json({error:"error getting association"}) );
+  }).catch( () => res.status(404).json({error:"room not found"}) );
+});
+
+// get room (collaborators only)
+
+app.get("/api/rooms/:id", (req,res) => {
+  authorizeUser(req,res,null,async (username) => {
+    var userId = await getId(username);
+    UserRoom.UserRoom.findAll({ where: {roomId: req.params.id, userId: userId}})
+    .then( userRooms => {
+      if(userRooms.length > 0) {
+        Room.Room.findByPk(req.params.id)
+        .then( room => {
+          res.status(200).json(room);
+        }).catch( () => res.status(404).json({error:"room not found"}) );
+      } else {
+        res.status(500).json({error:"could not find association"});
+      }
+    }).catch( () => res.status(500).json({error:"could not find association"}) );
+  });
+});
 
 // get room furnishings (collaborators only)
 
+app.get("/api/rooms/:id/furnishings", (req,res) => {
+  authorizeUser(req,res,null,async (username) => {
+    var userId = await getId(username);
+    UserRoom.UserRoom.findAll({ where: {roomId: req.params.id, userId: userId}})
+    .then( userRooms => {
+      if(userRooms.length > 0) {
+        Room.Room.findByPk(req.params.id)
+        .then( room => {
+          room.getFurnishings()
+          .then( furnishings => {
+            res.status(200).json( furnishings );
+          }).catch( () => res.status(500).json({error:"could not get furnishings"}) );
+        }).catch( () => res.status(404).json({error:"room not found"}) );
+      } else {
+        res.status(500).json({error:"could not find association"});
+      }
+    }).catch( () => res.status(500).json({error:"could not find association"}) );
+  });
+});
+
 // post furnishing
+
+app.post("/api/furnishings", (req,res) => {
+  authorizeUser(req,res,null, async (username) => {
+    var userId = await getId(username);
+    UserRoom.UserRoom.findAll( { where: { roomId: req.body.furnishing.roomId, userId: userId } } )
+    .then( userRooms => {
+      if(userRooms.length > 0) {
+        Furnishing.Furnishing.create( req.body.furnishing )
+        .then( furnishing => res.status(200).json(furnishing) )
+        .catch( () => res.status(500).json({error:"could not create furnishing"}) );
+      } else {
+        res.status(500).json({error: "could not find association"})
+      }
+    }).catch( () => res.status(500).json({error: "could not find association"}) );
+  });
+});
 
 // patch furnishing
 
+app.patch("/api/furnishings/:id", (req,res) => {
+  authorizeUser(req,res,null, (username) => {
+    Furnishing.Furnishing.findByPk(req.params.id)
+    .then( furnishing => {
+      Room.Room.findByPk(furnishing.roomId)
+      .then( room => {
+        room.getUsers()
+        .then( users => {
+          var user = users.find(user => user.username === username);
+          if(user) {
+            furnishing.update(req.body.furnishing)
+            .then( furnishing => res.status(200).json(furnishing) )
+            .catch( () => res.status(500).json({error:"Could not update furnishing"}) );
+          } else {
+            res.status(401).json({error:"Unauthorized"});
+          }
+        }).catch( () => res.status(500).json({error:"error getting users"}) );
+      }).catch( () => res.status(500).json({error:"could not get room"}) );
+    }).catch( () => res.status(404).json({error:"furnishing not found"}) );
+  });
+});
+
+
+
 // delete furnishing
 
-// post UserRoom (=== add collaborator)
+app.delete("/api/furnishings/:id", (req,res) => {
+  authorizeUser(req,res,null, (username) => {
+    Furnishing.Furnishing.findByPk(req.params.id)
+    .then( furnishing => {
+      Room.Room.findByPk(furnishing.roomId)
+      .then( room => {
+        room.getUsers()
+        .then( users => {
+          var user = users.find(user => user.username === username);
+          if(user) {
+            furnishing.destroy({force:true})
+            .then( () => res.status(200).json({success:"Operation completed"}) )
+            .catch( () => res.status(500).json({error:"Could not delete furnishing"}) );
+          } else {
+            res.status(401).json({error:"Unauthorized"});
+          }
+        }).catch( () => res.status(500).json({error:"error getting users"}) );
+      }).catch( () => res.status(500).json({error:"could not get room"}) );
+    }).catch( () => res.status(404).json({error:"furnishing not found"}) );
+  });
+});
 
-app.post("/api/UserRoom", (req,res) => {
-  
+// post UserRoom (=== add collaborator) ... owner only
+
+app.post("/api/UserRooms", (req,res) => {
+  authorizeUser(req,res,null, async (username) => {
+    var ownerId = await getId(username);
+    var recipientId = await getId(req.body.recipientUsername);
+    var roomId = req.body.roomId;
+    UserRoom.UserRoom.findAll({ where: { userId: ownerId, roomId: roomId } })
+    .then( userRooms => {
+      if(userRooms.length > 0) {
+        var userRoom = userRooms[0];
+        if(userRoom.isOwner) {
+          UserRoom.UserRoom.create({ roomId: roomId, userId: recipientId, isOwner: false, confirmed: false })
+          .then( () => res.status(200).json({success: "operation complete"}) )
+          .catch( () => res.status(500).json({error: "could not create association"}) );
+        } else {
+          res.status(401).json({error: "Unauthorized"});
+        }
+      } else {
+        res.status(500).json({error:"could not find association"});
+      }
+    }).catch( () => res.status(500).json({error: "could not find association"}) );
+  });
+});
+
+// patch UserRoom (=> confirm collaborator)
+
+app.patch("/api/UserRooms", (req,res) => {
+  authorizeUser( req, res, null, async (username) => {
+    var userId = await getId(username);
+    var roomId = req.body.roomId;
+    UserRoom.UserRoom.findAll({ where: { userId: userId, roomId: roomId } } )
+    .then( userRooms => {
+      if(userRooms.length > 0) {
+        var userRoom = userRooms[0];
+        userRoom.update({confirmed: req.body.confirmed})
+        .then( () => res.status(200).json({success: "operation completed"}) )
+        .catch( () => res.status(500).json({error: "could not update association"}) );
+      } else {
+        res.status(500).json({error:"could not find association"});
+      }
+    }).catch( () => res.status(500).json({error: "could not find association"}) );
+  });
+});
+
+// delete UserRoom (leave room, only if *not* owner)
+
+app.delete("/api/UserRooms", (req,res) => {
+  authorizeuser( req,res,null, async (username) => {
+    var userId = await getId(username);
+    var roomId = req.body.roomId;
+    UserRoom.UserRoom.findAll({where: {userId: userId, roomId: roomId, isOwner: false}})
+    .then( userRooms => {
+      if(userRooms.length > 0) {
+        var userRoom = userRooms[0];
+        userRoom.destroy({force:true})
+        .then( () => res.status(200).json({success: "operation completed"}) )
+        .catch( () => res.status(500).json({error:"could not delete association"}) );
+      } else {
+        res.status(500).json({error:"could not find association"});
+      }
+    }).catch( () => res.status(500).json({error: "could not find association"}) );
+  });
 });
 
 // get colors (no auth)
 app.get("/api/colors", (req,res) => {
   Color.Color.findAll()
   .then( colors => {
-    res.json(colors);
-  });
+    res.status(200).json(colors);
+  })
+  .catch( () => res.status(500).json({error:"error getting colors"}) );
 });
 
 // LISTEN

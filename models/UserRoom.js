@@ -8,7 +8,8 @@ const sequelize = new Sequelize('roombuilder','postgres','abcdef',
  
 class UserRoom extends Sequelize.Model { }
 UserRoom.init({
-  isOwner: {type:Sequelize.BOOLEAN, allowNull: false}
+  isOwner: {type:Sequelize.BOOLEAN, allowNull: false},
+  confirmed: {type:Sequelize.BOOLEAN, allowNull: false}
 },  { sequelize, modelName: 'userRoom' } );
 
 
