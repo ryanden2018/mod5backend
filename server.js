@@ -131,7 +131,7 @@ io.on("connection", function(socket) {
   });
 });
 
-// auto-release locks every 30 seconds
+// auto-release stale locks every 30 seconds
 
 setInterval(() => {
   FurnishingLock.FurnishingLock.findAll()
@@ -145,6 +145,7 @@ setInterval(() => {
 }, 30000);
 
 // AUTH
+
 
 // get userid from username (async!)
 
@@ -248,6 +249,19 @@ app.delete("/api/login", function(req,res) {
   var cookies = new Cookies(req,res,{keys:[COOKIESECRET]})
   cookies.set('rmbrAuthToken', "", {signed: true,httpOnly:true,overwrite:true});
   res.json({success:"logged out"});
+});
+
+
+// find out if username is taken
+app.get("/api/:username/exists",function(req,res) {
+  User.User.findAll({where:{username:req.params.username}})
+  .then( users => {
+    if(users.length > 0) {
+      res.status(200).json({status:"user exists"});
+    } else {
+      res.status(200).json({status:"user does not exist"});
+    }
+  }).catch( () => {res.status(500).json({error:"query error"})});
 });
 
 // delete a user (must be logged in)
