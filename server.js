@@ -42,6 +42,28 @@ function verifyAuthCookie(socket,successCallback,failureCallback = () => { }) {
 }
 
 io.on("connection", function(socket) {
+  // place client in a room
+  // payload: roomId
+  io.on("join", function(payload) {
+    verifyAuthCookie(socket, userId => {
+      UserRoom.UserRoom.findAll({where: {userId: userId, roomId: payload.roomId}})
+      .then( userRooms => {
+        if(userRooms.length > 0) {
+          socket.join(`room${payload.roomId}`);
+          socket.emit("joinResponse","success");
+        } else {
+          socket.emit("joinResponse","failed");
+        }
+      }).catch( () => socket.emit("joinResponse","failed") );
+    });
+  });
+
+  // remove client from a room
+  // payload: roomId
+  io.on("leave", function(payload) {
+    socket.leave(`room${payload.roomId}`);
+  });
+
   // user requests a lock on furniture item
   // payload: furnishingId
   socket.on("lockRequest", function(payload) {
@@ -90,7 +112,6 @@ io.on("connection", function(socket) {
       }
     });
   });
-
 });
 
 
