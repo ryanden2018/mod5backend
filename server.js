@@ -7,18 +7,48 @@ const io = require('socket.io')(http);
 require('dotenv').config();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-
-const User = require('./models/User')
-
-require('./seed')
-
-const SECRET = process.env.SECRET
-const COOKIESECRET = process.env.COOKIESECRET
-
 app.use(bodyParser.json())
+
+// models
+const User = require('./models/User');
+const Room = require('./models/Room');
+const UserRoom = require('./models/UserRoom');
+const Color = require('./models/Color');
+const Furnishing = require('./models/Furnishing');
+const FurnishingLock = require('./models/FurnishingLock');
+require('./sync');
+
+// secrets
+const SECRET = process.env.SECRET;
+const COOKIESECRET = process.env.COOKIESECRET;
+
+
+// socket.io
+
+io.on("connection", function(socket) {
+  console.log(socket.request.headers.cookie);
+});
+
 
 // AUTH
 
+// get userid from username (async!)
+
+async function getId(username) {
+  var id;
+  await ( User.User.findAll({where:{username:username}})
+  .then( users => {
+    if(users.length > 0) {
+      var user = users[0];
+      id = user.id;
+    }
+  }) );
+
+  return id;
+}
+
+
+// extract authorization token from req
 function getToken(req,res) {
   var cookies = new Cookies(req,res,{keys:[COOKIESECRET]});
   return cookies.get('token', {signed:true});
@@ -79,6 +109,7 @@ app.post('/api/login', function(req,res) {
   });
 });
 
+// check whether we are logged in
 app.get("/api/loggedin", function(req,res) {
   jwt.verify(getToken(req,res),SECRET,
     (err,results) => {
@@ -90,6 +121,34 @@ app.get("/api/loggedin", function(req,res) {
   });
 });
 
+// logout from app
+app.delete("/api/logout", function(req,res) {
+  var cookies = new Cookies(req,res,{keys:[COOKIESECRET]})
+  cookies.set('token', "", {signed: true});
+  res.json({success:"logged out"});
+});
+
+// delete a user
+app.delete("/api/users/:username", function(req,res) {
+  authorizeUser(req,res,req.params.username,
+    () => {
+      User.User.findAll({where:{username:req.params.username}})
+      .then( users => {
+        if(users.length > 0) {
+          var user = users[0];
+          user.destroy({force:true});
+          res.json({success:"operation succeeded"});
+        } else {
+          res.json({error:"operation failed"});
+        }
+      }).catch(() => {
+        res.json({error:"operation failed"});
+      })
+    }
+  );
+});
+
+// change user's password
 app.patch('/api/users/:username/password',
   (req,res) => {
     User.User.findAll({where:{username:req.params.username}})
@@ -134,14 +193,15 @@ app.patch('/api/users/:username/password',
 );
 
 
+// check that the user is authorized to access the content
 function authorizeUser(req,res,username,successCallback) {
   jwt.verify(getToken(req,res),SECRET,
     (err,results) => {
       if(err) {
         res.status(401).json({failed:"Unauthorized access"});
       } else {
-        if(username === results.username) {
-          successCallback();
+        if( username && (username === results.username)) {
+          successCallback(results.username);
         } else {
           res.status(401).json({failed: "Unauthorized access"});
         }
@@ -153,9 +213,60 @@ function authorizeUser(req,res,username,successCallback) {
 
 // API ROUTES
 
+// get rooms
+app.get("/api/users/:username/rooms", (req,res) => {
+  authorizeUser(req,res,req.params.username, () => {
+    User.User.findAll({where:{username:req.params.username}})
+    .then( users => {
+      if(users.length > 0) {
+        var user = users[0];
+        user.getRooms().then( rooms => {
+          res.json(rooms);
+        });
+      } else {
+        res.json({failed:"operation failed"});
+      }
+    })
+  });
+});
+
+// post room
+app.post("/api/rooms", (req,res) => {
+  authorizeUser(req,res,null, async (username) => {
+    var id = await getId(username);
+    Room.Room.create(req.body.room).then( room => {
+      UserRoom.UserRoom.create( {userId: id, roomId: room.id, isOwner: true} );
+      res.json(room) 
+    });
+  });
+});
+
+// patch room
+
+// delete room (owner only)
+
+// get room furnishings (collaborators only)
+
+// post furnishing
+
+// patch furnishing
+
+// delete furnishing
+
+// post UserRoom (=== add collaborator)
+
+app.post("/api/UserRoom", (req,res) => {
+  
+});
+
+// get colors (no auth)
+app.get("/api/colors", (req,res) => {
+  Color.Color.findAll()
+  .then( colors => {
+    res.json(colors);
+  });
+});
 
 // LISTEN
-
-
 http.listen(8000);
 
