@@ -8,7 +8,7 @@ const io = require('socket.io')(http);
 require('dotenv').config();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-app.use(bodyParser.json())
+app.use(bodyParser.json());
 
 // models
 const User = require('./models/User');
@@ -50,7 +50,7 @@ io.on("connection", function(socket) {
       .then( userRooms => {
         if(userRooms.length > 0) {
           socket.join(`room${payload.roomId}`);
-          socket.emit("joinResponse","success");
+          socket.emit("joinResponse",`joined room ${payload.roomId}`);
         } else {
           socket.emit("joinResponse","failed");
         }
@@ -93,7 +93,7 @@ io.on("connection", function(socket) {
   });
 
   // user creates a furniture item (notify other users)
-  // payload: furnishing (as returned by DB's create operation, including UUID and roomId)
+  // payload: furnishing (including roomId and UUID)
   socket.on("createFurnishing", function(payload) {
     verifyAuthCookie(socket, userId => {
       if(payload && payload.furnishing) {

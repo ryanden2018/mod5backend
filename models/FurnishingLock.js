@@ -14,8 +14,5 @@ FurnishingLock.init( {
 }, { sequelize, modelName: 'furnishingLock' } );
 
 
-FurnishingLock.belongsTo(Furnishing.Furnishing)
-FurnishingLock.belongsTo(User.User)
-
 module.exports = { FurnishingLock:FurnishingLock }
 
