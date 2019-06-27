@@ -8,6 +8,7 @@ const io = require('socket.io')(http);
 require('dotenv').config();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const uuid = require('uuid/v4');
 app.use(bodyParser.json());
 
 // models
@@ -44,7 +45,7 @@ function verifyAuthCookie(socket,successCallback,failureCallback = () => { }) {
 io.on("connection", function(socket) {
   // place client in a room
   // payload: roomId
-  io.on("join", function(payload) {
+  socket.on("join", function(payload) {
     verifyAuthCookie(socket, userId => {
       UserRoom.UserRoom.findAll({where: {userId: userId, roomId: payload.roomId}})
       .then( userRooms => {
@@ -60,7 +61,7 @@ io.on("connection", function(socket) {
 
   // remove client from a room
   // payload: roomId
-  io.on("leave", function(payload) {
+  socket.on("leave", function(payload) {
     socket.leave(`room${payload.roomId}`);
   });
 
@@ -73,6 +74,22 @@ io.on("connection", function(socket) {
       .catch(() => socket.emit("lockResponse","denied"));
     }, () => {
       socket.emit("lockResponse","denied");
+    });
+  });
+
+  // user refreshes timestamp on lock
+  socket.on("lockRefresh", function(payload) {
+    verifyAuthCookie(socket, userId => {
+      FurnishingLock.FurnishingLock.findAll({where:{userId:userId}})
+      .then( locks => {
+        if(locks.length > 0) {
+          var lock = locks[0];
+          lock.update({refreshes: lock.refreshes+1});
+          socket.emit("lockRefreshResponse","approved");
+        } else {
+          socket.emit("lockRefreshResponse","denied");
+        }
+      }).catch( () => socket.emit("lockRefreshResponse","denied") );
     });
   });
 
@@ -114,6 +131,18 @@ io.on("connection", function(socket) {
   });
 });
 
+// auto-release locks every 30 seconds
+
+setInterval(() => {
+  FurnishingLock.FurnishingLock.findAll()
+  .then( locks => {
+    locks.forEach( lock => {
+      if( (new Date())-lock.updatedAt > 15000 ) {
+        lock.destroy({force:true});
+      }
+    });
+  }).catch( () => { } )
+}, 30000);
 
 // AUTH
 
@@ -185,6 +214,8 @@ app.post('/api/login', function(req,res) {
               var cookies = new Cookies(req,res,{keys:[COOKIESECRET]})
               cookies.set('rmbrAuthToken', token, {signed: true, httpOnly: true, overwrite: true});
               return res.status(200).json({success: "Approved"})
+            } else {
+              res.status(401).json({failed:"Unauthorized"});
             }
         });
       } else {

@@ -10,7 +10,8 @@ const sequelize = new Sequelize('roombuilder','postgres','abcdef',
 class FurnishingLock extends Sequelize.Model { }
 FurnishingLock.init( {
   furnishingId: { type: Sequelize.UUID, allowNull: false, unique: true },
-  userId: { type: Sequelize.INTEGER, allowNull: false, unique: true}
+  userId: { type: Sequelize.INTEGER, allowNull: false, unique: true},
+  refreshes: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 0 }
 }, { sequelize, modelName: 'furnishingLock' } );
 
 
