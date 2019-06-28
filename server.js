@@ -43,6 +43,9 @@ function verifyAuthCookie(socket,successCallback,failureCallback = () => { }) {
 }
 
 io.on("connection", function(socket) {
+
+  socket.on("console", console.log)
+
   // place client in a room
   // payload: roomId
   socket.on("join", function(payload) {
@@ -114,7 +117,7 @@ io.on("connection", function(socket) {
   socket.on("createFurnishing", function(payload) {
     verifyAuthCookie(socket, userId => {
       if(payload && payload.furnishing) {
-        socket.to(`room${payload.furnishing.roomId}`).emit("create",payload);
+        socket.broadcast/*.to(`room${payload.furnishing.roomId}`)*/.emit("create",payload);
       }
     });
   });
@@ -612,6 +615,20 @@ app.get("/api/colors", (req,res) => {
     res.status(200).json(colors);
   })
   .catch( () => res.status(500).json({error:"error getting colors"}) );
+});
+
+// get color by name (no auth)
+app.get("/api/colors/:colorName", (req,res) => {
+  Color.Color.findAll({where:{name:req.params.colorName}})
+  .then( colors => {
+    if(colors.length > 0) {
+      res.status(200).json(colors[0]);
+    } else {
+      res.status(404).json({error:"color not found"});
+    }
+  }).catch( () => { 
+    res.status(500).json({error:"error getting color"});
+  });
 });
 
 // LISTEN

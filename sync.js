@@ -37,7 +37,7 @@ User.User.sync({force:forceSync})
         .then( jonsnow =>
           User.User.create({username:"cersei",passwordDigest:hash})
           .then( cersei => {
-            Room.Room.create({length:10,width:10,height:10})
+            Room.Room.create({name:"basic room",length:10,width:10,height:10})
             .then( room => {
               UserRoom.UserRoom.create({userId: jonsnow.id, roomId: room.id, isOwner: true, confirmed: true});
               UserRoom.UserRoom.create({userId: cersei.id, roomId: room.id, isOwner: false, confirmed: true});
