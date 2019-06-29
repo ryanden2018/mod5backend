@@ -59,6 +59,7 @@ io.on("connection", function(socket) {
       .then( userRooms => {
         if(userRooms.length > 0) {
           socket.join(`room ${payload.roomId}`);
+          console.log(`${userId} joined ${payload.roomId}`)
           socket.emit("joinResponse",`joined room ${payload.roomId}`);
         } else {
           socket.emit("joinResponse","failed");
@@ -141,6 +142,22 @@ io.on("connection", function(socket) {
     });
   });
 
+  socket.on("getAvailableRooms",function(payload) {
+    verifyAuthCookie(socket, userId => {
+      User.User.findAll({where:{id:userId}})
+      .then( users => {
+        if(users.length > 0) {
+          var user = users[0];
+          user.getRooms().then( rooms => {
+            socket.emit("availableRooms",{availableRooms:rooms})
+          })
+          .catch( () => { } );
+        }
+      })
+      .catch( () => { } );
+    });
+  });
+
   // user creates a furniture item (notify other users)
   // payload: furnishing (including roomId and UUID)
   socket.on("createFurnishing", function(payload) {
@@ -151,7 +168,7 @@ io.on("connection", function(socket) {
         if(roomStr) {
           let roomId = parseInt(roomStr.split(" ")[1])
           Furnishing.Furnishing.create( {...payload.furnishing,roomId:roomId} )
-          socket.to(`room ${payload.furnishing.roomId}`).emit("create",payload);
+          socket.to(`room ${roomId}`).emit("create",payload);
         }
       }
     });
@@ -466,9 +483,17 @@ app.delete("/api/rooms/:id", (req,res) => {
     UserRoom.UserRoom.findAll({where: {roomId: room.id, isOwner: true}})
     .then( userRooms => {
       if(userRooms.length > 0) {
-        User.User.findByPk(userRooms.userId)
+        User.User.findByPk(userRooms[0].userId)
         .then( user => {
           authorizeUser(req,res,user.username, () => {
+            UserRoom.UserRoom.findAll( { where: { roomId: req.params.id } } )
+            .then( otherUserRooms => {
+              otherUserRooms.forEach( otherUserRoom => otherUserRoom.destroy({force:true}) );
+            }).catch( () => { } );
+            Furnishing.Furnishing.findAll( { where: { roomId: req.params.id } } )
+            .then( furnishings => {
+              furnishings.forEach( furnishing => furnishing.destroy({force:true}) );
+            }).catch( () => { } );
             room.destroy({force:true})
             .then( () => res.status(200).json({success: "operation completed"}) )
             .catch( () => res.status(500).json({error:"could not delete room"}) );
