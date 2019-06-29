@@ -114,11 +114,12 @@ io.on("connection", function(socket) {
       if(payload && payload.furnishing) {
         let rooms = Object.keys(socket.rooms);
         let roomStr = rooms.find( room => room.match(/room \d+/))
-        let roomId = parseInt(roomStr.split(" ")[1])
-        Furnishing.Furnishing.update({...payload.furnishing, roomId: roomId},
-          {where: {id:payload.furnishing.id,roomId:roomId} });
-        Furnishing.Furnishing.
-        socket.to(`room ${roomId}`).emit("update",payload);
+        if(roomStr) {
+          let roomId = parseInt(roomStr.split(" ")[1])
+          Furnishing.Furnishing.update({...payload.furnishing, roomId: roomId},
+            {where: {id:payload.furnishing.id,roomId:roomId} });
+          socket.to(`room ${roomId}`).emit("update",payload);
+        }
       }
     });
   });
@@ -130,9 +131,11 @@ io.on("connection", function(socket) {
       if(payload && payload.furnishing) {
         let rooms = Object.keys(socket.rooms);
         let roomStr = rooms.find( room => room.match(/room \d+/))
-        let roomId = parseInt(roomStr.split(" ")[1])
-        Furnishing.Furnishing.create( {...payload.furnishing,roomId:roomId} )
-        socket.to(`room ${payload.furnishing.roomId}`).emit("create",payload);
+        if(roomStr) {
+          let roomId = parseInt(roomStr.split(" ")[1])
+          Furnishing.Furnishing.create( {...payload.furnishing,roomId:roomId} )
+          socket.to(`room ${payload.furnishing.roomId}`).emit("create",payload);
+        }
       }
     });
   });
@@ -145,15 +148,17 @@ io.on("connection", function(socket) {
       if(payload && payload.furnishing) {
         let rooms = Object.keys(socket.rooms);
         let roomStr = rooms.find( room => room.match(/room \d+/))
-        let roomId = parseInt(roomStr.split(" ")[1])
-        Furnishing.Furnishing.findAll( { where: { id: payload.furnishingId, roomId: roomId } } )
-        .then( furnishings => {
-          if(furnishings.length > 0) {
-            let furnishing = furnishings[0];
-            furnishing.destroy({force:true})
-          }
-        }).catch( () => { } )
-        socket.to(`room ${roomId}`).emit("delete",payload.furnishingId);
+        if(roomStr) {
+          let roomId = parseInt(roomStr.split(" ")[1])
+          Furnishing.Furnishing.findAll( { where: { id: payload.furnishingId, roomId: roomId } } )
+          .then( furnishings => {
+            if(furnishings.length > 0) {
+              let furnishing = furnishings[0];
+              furnishing.destroy({force:true})
+            }
+          }).catch( () => { } )
+          socket.to(`room ${roomId}`).emit("delete",payload.furnishingId);
+        }
       }
     });
   });
