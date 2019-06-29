@@ -76,7 +76,6 @@ io.on("connection", function(socket) {
   // user requests a lock on furniture item
   // payload: furnishingId
   socket.on("lockRequest", function(payload) {
-    console.log("REQUEST")
     verifyAuthCookie(socket, userId => {
       FurnishingLock.FurnishingLock.create({userId:userId,furnishingId:payload.furnishingId})
       .then(() => socket.emit("lockResponse","approved"))
@@ -88,7 +87,6 @@ io.on("connection", function(socket) {
 
   // user refreshes timestamp on lock
   socket.on("lockRefresh", function(payload) {
-    console.log("REFRESH")
     verifyAuthCookie(socket, userId => {
       FurnishingLock.FurnishingLock.findAll({where:{userId:userId}})
       .then( locks => {
@@ -106,7 +104,6 @@ io.on("connection", function(socket) {
   // user releases lock on furniture item
   // payload: furnishing (new furnishing properties)
   socket.on("lockRelease", function(payload) {
-    console.log("RELEASE")
     verifyAuthCookie(socket, userId => {
       FurnishingLock.FurnishingLock.findAll({ where: {userId: userId} })
       .then( locks => {
@@ -122,6 +119,23 @@ io.on("connection", function(socket) {
           Furnishing.Furnishing.update({...payload.furnishing, roomId: roomId},
             {where: {id:payload.furnishing.id,roomId:roomId} });
           socket.to(`room ${roomId}`).emit("update",payload);
+        }
+      }
+    });
+  });
+
+  // user update color of furniture item
+  // payload: furnishingId, colorName
+  socket.on("updateColor", function(payload) {
+    verifyAuthCookie(socket, userId => {
+      if(payload && payload.furnishingId && payload.colorName) {
+        let rooms = Object.keys(socket.rooms);
+        let roomStr = rooms.find( room => room.match(/room \d+/))
+        if(roomStr) {
+          let roomId = parseInt(roomStr.split(" ")[1])
+          Furnishing.Furnishing.update({colorName:payload.colorName},
+            {where:{id:payload.furnishingId, roomId:roomId}} );
+          socket.to(`room ${roomId}`).emit("colorUpdate",payload);
         }
       }
     });
@@ -148,7 +162,7 @@ io.on("connection", function(socket) {
   // payload: furnishingId
   socket.on("deleteFurnishing", function(payload) {
     verifyAuthCookie(socket, userId => {
-      if(payload && payload.furnishing) {
+      if(payload && payload.furnishingId) {
         let rooms = Object.keys(socket.rooms);
         let roomStr = rooms.find( room => room.match(/room \d+/))
         if(roomStr) {
@@ -160,7 +174,7 @@ io.on("connection", function(socket) {
               furnishing.destroy({force:true})
             }
           }).catch( () => { } )
-          socket.to(`room ${roomId}`).emit("delete",payload.furnishingId);
+          socket.to(`room ${roomId}`).emit("delete",payload);
         }
       }
     });
