@@ -13,7 +13,7 @@ Furnishing.init( {
   id: { allowNull: false, primaryKey: true, autoIncrement: false, type: Sequelize.UUID, defaultValue: uuid() },
   type: {type: Sequelize.STRING, allowNull: false}, // table, chair, stool, desk, sofa, bed, bookcase, dresser
   posx: {type:Sequelize.FLOAT, allowNull: false},
-  posy: {type:Sequelize.FLOAT, allowNull: false},
+  posz: {type:Sequelize.FLOAT, allowNull: false},
   theta: {type: Sequelize.FLOAT, allowNull: false},
   params: { type: Sequelize.STRING } // extra parameters (type dependent, may be null or empty string)
 }, { sequelize, modelName: 'furnishing' } );

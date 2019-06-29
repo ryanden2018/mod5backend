@@ -41,7 +41,7 @@ User.User.sync({force:forceSync})
             .then( room => {
               UserRoom.UserRoom.create({userId: jonsnow.id, roomId: room.id, isOwner: true, confirmed: true});
               UserRoom.UserRoom.create({userId: cersei.id, roomId: room.id, isOwner: false, confirmed: true});
-              Furnishing.Furnishing.create({type:"table",posx:0,posy:0,theta:0,roomId:room.id,colorName:"blue"});
+              Furnishing.Furnishing.create({type:"table",posx:0,posz:0,theta:0,roomId:room.id,colorName:"blue"});
             });
           })
         );

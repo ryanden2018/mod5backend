@@ -43,17 +43,22 @@ function verifyAuthCookie(socket,successCallback,failureCallback = () => { }) {
 }
 
 io.on("connection", function(socket) {
-
-  socket.on("console", console.log)
-
-  // place client in a room
+  // place client in a room, removing them from all other rooms
+  // note: client can only join a room they are authorized to be in
   // payload: roomId
   socket.on("join", function(payload) {
+    let rooms = Object.keys(socket.rooms);
+    rooms.forEach( room => {
+      if(room.match(/room \d+/)) {
+        socket.leave(room);
+      }
+    });
+
     verifyAuthCookie(socket, userId => {
       UserRoom.UserRoom.findAll({where: {userId: userId, roomId: payload.roomId}})
       .then( userRooms => {
         if(userRooms.length > 0) {
-          socket.join(`room${payload.roomId}`);
+          socket.join(`room ${payload.roomId}`);
           socket.emit("joinResponse",`joined room ${payload.roomId}`);
         } else {
           socket.emit("joinResponse","failed");
@@ -65,7 +70,7 @@ io.on("connection", function(socket) {
   // remove client from a room
   // payload: roomId
   socket.on("leave", function(payload) {
-    socket.leave(`room${payload.roomId}`);
+    socket.leave(`room ${payload.roomId}`);
   });
 
   // user requests a lock on furniture item
@@ -107,7 +112,13 @@ io.on("connection", function(socket) {
         });
       }).catch( () => { } );
       if(payload && payload.furnishing) {
-        socket.to(`room${payload.furnishing.roomId}`).emit("update",payload);
+        let rooms = Object.keys(socket.rooms);
+        let roomStr = rooms.find( room => room.match(/room \d+/))
+        let roomId = parseInt(roomStr.split(" ")[1])
+        Furnishing.Furnishing.update({...payload.furnishing, roomId: roomId},
+          {where: {id:payload.furnishing.id,roomId:roomId} });
+        Furnishing.Furnishing.
+        socket.to(`room ${roomId}`).emit("update",payload);
       }
     });
   });
@@ -117,18 +128,32 @@ io.on("connection", function(socket) {
   socket.on("createFurnishing", function(payload) {
     verifyAuthCookie(socket, userId => {
       if(payload && payload.furnishing) {
-        socket.broadcast/*.to(`room${payload.furnishing.roomId}`)*/.emit("create",payload);
+        let rooms = Object.keys(socket.rooms);
+        let roomStr = rooms.find( room => room.match(/room \d+/))
+        let roomId = parseInt(roomStr.split(" ")[1])
+        Furnishing.Furnishing.create( {...payload.furnishing,roomId:roomId} )
+        socket.to(`room ${payload.furnishing.roomId}`).emit("create",payload);
       }
     });
   });
 
 
   // user deletes a furniture item (notify other users)
-  // payload: furnishingId, roomId
+  // payload: furnishingId
   socket.on("deleteFurnishing", function(payload) {
     verifyAuthCookie(socket, userId => {
       if(payload && payload.furnishing) {
-        socket.to(`room${payload.roomId}`).emit("delete",payload.furnishingId);
+        let rooms = Object.keys(socket.rooms);
+        let roomStr = rooms.find( room => room.match(/room \d+/))
+        let roomId = parseInt(roomStr.split(" ")[1])
+        Furnishing.Furnishing.findAll( { where: { id: payload.furnishingId, roomId: roomId } } )
+        .then( furnishings => {
+          if(furnishings.length > 0) {
+            let furnishing = furnishings[0];
+            furnishing.destroy({force:true})
+          }
+        }).catch( () => { } )
+        socket.to(`room ${roomId}`).emit("delete",payload.furnishingId);
       }
     });
   });
@@ -376,14 +401,14 @@ app.get("/api/users/:username/rooms", (req,res) => {
 });
 
 // post room
-// req.body: {room: {length:..., width:..., height:...} }
+// req.body: {room: {name: ..., length:..., width:..., height:...} }
 app.post("/api/rooms", (req,res) => {
   authorizeUser(req,res,null, async (username) => {
     var id = await getId(username);
     Room.Room.create(req.body.room).then( room => {
       UserRoom.UserRoom.create( {userId: id, roomId: room.id, isOwner: true, confirmed: true} )
+      .then( () => res.json(room) )
       .catch( () => res.status(500).json({error:"could not create association"}) );
-      res.json(room) 
     }).catch( () => res.status(500).json({error:"could not create room"}) );
   });
 });
@@ -453,6 +478,22 @@ app.get("/api/rooms/:id", (req,res) => {
   });
 });
 
+// determine whether user is owner of room
+
+app.get("/api/rooms/:id/isOwner", (req,res) => {
+  authorizeUser(req,res,null, async (username) => {
+    var userId = await getId(username);
+    UserRoom.UserRoom.findAll({where:{roomId:req.params.id,userId:userId}})
+    .then(userRooms => {
+      if(userRooms.length > 0) {
+        res.status(200).json( {status: userRooms[0].isOwner});
+      } else {
+        res.status(500).json({error:"could not find association"});
+      }
+    }).catch( () => res.status(500).json({error:"could not find association"}) );
+  });
+});
+
 // get room furnishings (collaborators only)
 
 app.get("/api/rooms/:id/furnishings", (req,res) => {
@@ -462,8 +503,8 @@ app.get("/api/rooms/:id/furnishings", (req,res) => {
     .then( userRooms => {
       if(userRooms.length > 0) {
         Room.Room.findByPk(req.params.id)
-        .then( room => {
-          room.getFurnishings()
+        .then( () => {
+          Furnishing.Furnishing.findAll( { where: { roomId: req.params.id } } )
           .then( furnishings => {
             res.status(200).json( furnishings );
           }).catch( () => res.status(500).json({error:"could not get furnishings"}) );
