@@ -76,6 +76,7 @@ io.on("connection", function(socket) {
   // user requests a lock on furniture item
   // payload: furnishingId
   socket.on("lockRequest", function(payload) {
+    console.log("REQUEST")
     verifyAuthCookie(socket, userId => {
       FurnishingLock.FurnishingLock.create({userId:userId,furnishingId:payload.furnishingId})
       .then(() => socket.emit("lockResponse","approved"))
@@ -87,6 +88,7 @@ io.on("connection", function(socket) {
 
   // user refreshes timestamp on lock
   socket.on("lockRefresh", function(payload) {
+    console.log("REFRESH")
     verifyAuthCookie(socket, userId => {
       FurnishingLock.FurnishingLock.findAll({where:{userId:userId}})
       .then( locks => {
@@ -104,6 +106,7 @@ io.on("connection", function(socket) {
   // user releases lock on furniture item
   // payload: furnishing (new furnishing properties)
   socket.on("lockRelease", function(payload) {
+    console.log("RELEASE")
     verifyAuthCookie(socket, userId => {
       FurnishingLock.FurnishingLock.findAll({ where: {userId: userId} })
       .then( locks => {
