@@ -198,18 +198,18 @@ io.on("connection", function(socket) {
   });
 });
 
-// auto-release stale locks every 30 seconds
+// auto-release stale locks every 5 seconds
 
 setInterval(() => {
   FurnishingLock.FurnishingLock.findAll()
   .then( locks => {
     locks.forEach( lock => {
-      if( (new Date())-lock.updatedAt > 15000 ) {
+      if( (new Date())-lock.updatedAt > 2500 ) {
         lock.destroy({force:true});
       }
     });
   }).catch( () => { } )
-}, 30000);
+}, 5000);
 
 // AUTH
 
