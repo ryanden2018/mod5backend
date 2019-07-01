@@ -82,11 +82,34 @@ io.on("connection", function(socket) {
   // payload: furnishingId
   socket.on("lockRequest", function(payload) {
     verifyAuthCookie(socket, userId => {
+      // release stale locks
+      FurnishingLock.FurnishingLock.findAll()
+      .then( locks => {
+        locks.forEach( lock => {
+          if( (new Date())-lock.updatedAt > 2500 ) {
+            lock.destroy({force:true});
+          }
+        });
+      }).catch( () => { } )
+
+      // create new lock
       FurnishingLock.FurnishingLock.create({userId:userId,furnishingId:payload.furnishingId})
       .then(() => socket.emit("lockResponse","approved"))
       .catch(() => socket.emit("lockResponse","denied"));
     }, () => {
       socket.emit("lockResponse","denied");
+    });
+  });
+
+  // user moves mouse while locked onto furniture item (does not persist!)
+  socket.on("mouseMoved", function(payload) {
+    verifyAuthCookie(socket, userId => {
+      let rooms = Object.keys(socket.rooms);
+      let roomStr = rooms.find( room => room.match(/room \d+/))
+      if(roomStr) {
+        let roomId = parseInt(roomStr.split(" ")[1])
+        socket.to(`room ${roomId}`).emit("update",payload);
+      }
     });
   });
 
@@ -142,6 +165,17 @@ io.on("connection", function(socket) {
             {where:{id:payload.furnishingId, roomId:roomId}} );
           socket.to(`room ${roomId}`).emit("colorUpdate",payload);
         }
+      }
+    });
+  });
+
+  socket.on("roomDeleted",function() {
+    verifyAuthCookie(socket, userId => {
+      let rooms = Object.keys(socket.rooms);
+      let roomStr = rooms.find( room => room.match(/room \d+/))
+      if(roomStr) {
+        let roomId = parseInt(roomStr.split(" ")[1])
+        socket.to(`room ${roomId}`).emit("roomDeleted");
       }
     });
   });
@@ -202,18 +236,6 @@ io.on("connection", function(socket) {
   });
 });
 
-// auto-release stale locks every 5 seconds
-
-setInterval(() => {
-  FurnishingLock.FurnishingLock.findAll()
-  .then( locks => {
-    locks.forEach( lock => {
-      if( (new Date())-lock.updatedAt > 2500 ) {
-        lock.destroy({force:true});
-      }
-    });
-  }).catch( () => { } )
-}, 5000);
 
 // AUTH
 
