@@ -31,21 +31,21 @@ User.User.sync({force:forceSync})
       Color.Color.create({name:"white",red:175,green:175,blue:175});
       Color.Color.create({name:"brown",red:150,green:75,blue:0});
 
-      bcrypt.hash("abcdef",10, (err,hash) => {
-        User.User.create({username:"tyrion",passwordDigest:hash});
-        User.User.create({username:"jonsnow",passwordDigest:hash})
-        .then( jonsnow =>
-          User.User.create({username:"cersei",passwordDigest:hash})
-          .then( cersei => {
-            Room.Room.create({name:"basic room",length:10,width:10,height:10})
-            .then( room => {
-              UserRoom.UserRoom.create({userId: jonsnow.id, roomId: room.id, isOwner: true, confirmed: true});
-              UserRoom.UserRoom.create({userId: cersei.id, roomId: room.id, isOwner: false, confirmed: true});
-              Furnishing.Furnishing.create({type:"table",posx:0,posz:0,theta:0,roomId:room.id,colorName:"blue"});
-            });
-          })
-        );
-      })
+      // bcrypt.hash("abcdef",10, (err,hash) => {
+      //   User.User.create({username:"tyrion",passwordDigest:hash});
+      //   User.User.create({username:"jonsnow",passwordDigest:hash})
+      //   .then( jonsnow =>
+      //     User.User.create({username:"cersei",passwordDigest:hash})
+      //     .then( cersei => {
+      //       Room.Room.create({name:"basic room",length:10,width:10,height:10})
+      //       .then( room => {
+      //         //UserRoom.UserRoom.create({userId: jonsnow.id, roomId: room.id, isOwner: true, confirmed: true});
+      //         //UserRoom.UserRoom.create({userId: cersei.id, roomId: room.id, isOwner: false, confirmed: true});
+      //         //Furnishing.Furnishing.create({type:"table",posx:0,posz:0,theta:0,roomId:room.id,colorName:"blue"});
+      //       });
+      //     })
+      //   );
+      // })
 
     })
   });

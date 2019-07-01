@@ -28,15 +28,19 @@ const COOKIESECRET = process.env.COOKIESECRET;
 // socket.io
 
 function verifyAuthCookie(socket,successCallback,failureCallback = () => { }) {
-  var cookies = cookie.parse(socket.request.headers.cookie);
-  if(cookies.rmbrAuthToken) {
-    jwt.verify(cookies.rmbrAuthToken,SECRET, (err,results) => {
-      if(results && !err) {
-        successCallback(results.id);
-      } else {
-        failureCallback();
-      }
-    });
+  if(socket && socket.request && socket.request.headers && socket.request.headers.cookie) {
+    var cookies = cookie.parse(socket.request.headers.cookie);
+    if(cookies.rmbrAuthToken) {
+      jwt.verify(cookies.rmbrAuthToken,SECRET, (err,results) => {
+        if(results && !err) {
+          successCallback(results.id);
+        } else {
+          failureCallback();
+        }
+      });
+    } else {
+      failureCallback();
+    }
   } else {
     failureCallback();
   }
