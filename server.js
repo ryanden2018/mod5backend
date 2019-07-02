@@ -63,7 +63,6 @@ io.on("connection", function(socket) {
       .then( userRooms => {
         if(userRooms.length > 0) {
           socket.join(`room ${payload.roomId}`);
-          console.log(`${userId} joined ${payload.roomId}`)
           socket.emit("joinResponse",`joined room ${payload.roomId}`);
         } else {
           socket.emit("joinResponse","failed");
@@ -208,6 +207,15 @@ io.on("connection", function(socket) {
           Furnishing.Furnishing.create( {...payload.furnishing,roomId:roomId} )
           socket.to(`room ${roomId}`).emit("create",payload);
         }
+      }
+    });
+  });
+
+  socket.on("removeFromAllRooms", function(payload) {
+    let rooms = Object.keys(socket.rooms);
+    rooms.forEach( room => {
+      if(room.match(/room \d+/)) {
+        socket.leave(room);
       }
     });
   });
