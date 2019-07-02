@@ -63,7 +63,6 @@ io.on("connection", function(socket) {
       .then( userRooms => {
         if(userRooms.length > 0) {
           socket.join(`room ${payload.roomId}`);
-          console.log(`${userId} joined ${payload.roomId}`)
           socket.emit("joinResponse",`joined room ${payload.roomId}`);
         } else {
           socket.emit("joinResponse","failed");
@@ -82,11 +81,34 @@ io.on("connection", function(socket) {
   // payload: furnishingId
   socket.on("lockRequest", function(payload) {
     verifyAuthCookie(socket, userId => {
+      // release stale locks
+      FurnishingLock.FurnishingLock.findAll()
+      .then( locks => {
+        locks.forEach( lock => {
+          if( (new Date())-lock.updatedAt > 2500 ) {
+            lock.destroy({force:true});
+          }
+        });
+      }).catch( () => { } )
+
+      // create new lock
       FurnishingLock.FurnishingLock.create({userId:userId,furnishingId:payload.furnishingId})
       .then(() => socket.emit("lockResponse","approved"))
       .catch(() => socket.emit("lockResponse","denied"));
     }, () => {
       socket.emit("lockResponse","denied");
+    });
+  });
+
+  // user moves mouse while locked onto furniture item (does not persist!)
+  socket.on("mouseMoved", function(payload) {
+    verifyAuthCookie(socket, userId => {
+      let rooms = Object.keys(socket.rooms);
+      let roomStr = rooms.find( room => room.match(/room \d+/))
+      if(roomStr) {
+        let roomId = parseInt(roomStr.split(" ")[1])
+        socket.to(`room ${roomId}`).emit("update",payload);
+      }
     });
   });
 
@@ -146,6 +168,17 @@ io.on("connection", function(socket) {
     });
   });
 
+  socket.on("roomDeleted",function() {
+    verifyAuthCookie(socket, userId => {
+      let rooms = Object.keys(socket.rooms);
+      let roomStr = rooms.find( room => room.match(/room \d+/))
+      if(roomStr) {
+        let roomId = parseInt(roomStr.split(" ")[1])
+        socket.to(`room ${roomId}`).emit("roomDeleted");
+      }
+    });
+  });
+
   socket.on("getAvailableRooms",function(payload) {
     verifyAuthCookie(socket, userId => {
       User.User.findAll({where:{id:userId}})
@@ -178,6 +211,15 @@ io.on("connection", function(socket) {
     });
   });
 
+  socket.on("removeFromAllRooms", function(payload) {
+    let rooms = Object.keys(socket.rooms);
+    rooms.forEach( room => {
+      if(room.match(/room \d+/)) {
+        socket.leave(room);
+      }
+    });
+  });
+
 
   // user deletes a furniture item (notify other users)
   // payload: furnishingId
@@ -202,18 +244,6 @@ io.on("connection", function(socket) {
   });
 });
 
-// auto-release stale locks every 5 seconds
-
-setInterval(() => {
-  FurnishingLock.FurnishingLock.findAll()
-  .then( locks => {
-    locks.forEach( lock => {
-      if( (new Date())-lock.updatedAt > 2500 ) {
-        lock.destroy({force:true});
-      }
-    });
-  }).catch( () => { } )
-}, 5000);
 
 // AUTH
 

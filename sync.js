@@ -6,7 +6,8 @@ const Furnishing = require('./models/Furnishing');
 const FurnishingLock = require('./models/FurnishingLock');
 const bcrypt = require('bcrypt');
 
-const forceSync = true;
+
+const forceSync = false;
 
 User.User.sync({force:forceSync})
 .then( () => {
