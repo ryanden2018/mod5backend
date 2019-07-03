@@ -107,7 +107,7 @@ io.on("connection", function(socket) {
       let roomStr = rooms.find( room => room.match(/room \d+/))
       if(roomStr) {
         let roomId = parseInt(roomStr.split(" ")[1])
-        socket.to(`room ${roomId}`).emit("update",payload);
+        socket.to(`room ${roomId}`).emit("mouseMoved",payload);
       }
     });
   });
