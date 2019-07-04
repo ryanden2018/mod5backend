@@ -21,7 +21,7 @@ app.use(bodyParser.json());
 app.use(cors({
   origin: "https://roombuilder.herokuapp.com",
   methods: ['GET','POST','PATCH','DELETE'],
-  allowedHeaders: ['Content-Type','Authorization'],
+  allowedHeaders: ['Content-Type','Authorization','Cookie','Set-Cookie'],
   credentials: true
 }));
 
