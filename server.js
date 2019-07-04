@@ -1,10 +1,16 @@
+const fs = require('fs');
+const NodeRSA = require('node-rsa');
 const express = require('express');
 const bodyParser = require('body-parser');
 const app = express();
-const http = require('http').createServer(app);
+// const https = require('https').createServer({
+//   key: fs.readFileSync('../server.key'), // REPLACE
+//   cert: fs.readFileSync('../server.cert') // REPLACE
+// },app);
+const https = require('https').createServer(app);
 const Cookies = require('cookies');
 const cookie = require('cookie');
-const io = require('socket.io')(http);
+const io = require('socket.io')(https);
 require('dotenv').config();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -21,8 +27,20 @@ const FurnishingLock = require('./models/FurnishingLock');
 require('./sync');
 
 // secrets
-const SECRET = process.env.SECRET;
-const COOKIESECRET = process.env.COOKIESECRET;
+
+const COOKIESECRET = uuid(); // NOT SECURE (just for signing cookies)
+
+const key = new NodeRSA({b: 2048});
+const privateKey = key.exportKey('pkcs1-private');
+const publicKey = key.exportKey('pkcs8-public');
+const signOptions = {
+  expiresIn: "2h",
+  algorithm: "RS256"
+};
+const verifyOptions = {
+  expiresIn: "2h",
+  algorithm: ["RS256"]
+};
 
 
 // socket.io
@@ -31,7 +49,7 @@ function verifyAuthCookie(socket,successCallback,failureCallback = () => { }) {
   if(socket && socket.request && socket.request.headers && socket.request.headers.cookie) {
     var cookies = cookie.parse(socket.request.headers.cookie);
     if(cookies.rmbrAuthToken) {
-      jwt.verify(cookies.rmbrAuthToken,SECRET, (err,results) => {
+      jwt.verify(cookies.rmbrAuthToken,publicKey, verifyOptions, (err,results) => {
         if(results && !err) {
           successCallback(results.id);
         } else {
@@ -326,8 +344,8 @@ app.post('/api/login', function(req,res) {
               const token = jwt.sign({
                 username: user.username,
                 id: user.id
-              }, SECRET,
-              { expiresIn: '2h' });
+              }, privateKey,
+              signOptions);
               var cookies = new Cookies(req,res,{keys:[COOKIESECRET]})
               cookies.set('rmbrAuthToken', token, {signed: true, httpOnly: true, overwrite: true});
               return res.status(200).json({success: "Approved"})
@@ -346,7 +364,7 @@ app.post('/api/login', function(req,res) {
 
 // check whether we are logged in
 app.get("/api/loggedin", function(req,res) {
-  jwt.verify(getToken(req,res),SECRET,
+  jwt.verify(getToken(req,res),publicKey,verifyOptions,
     (err,results) => {
       if(err) {
         res.json({status: "Not logged in"})
@@ -478,7 +496,7 @@ app.patch('/api/users/:username/password',
 // if username is null, do not check equality of usernames (in which case it should
 // be checked in the callback)
 function authorizeUser(req,res,username,successCallback) {
-  jwt.verify(getToken(req,res),SECRET,
+  jwt.verify(getToken(req,res),publicKey,verifyOptions,
     (err,results) => {
       if(err) {
         res.status(401).json({failed:"Unauthorized access"});
@@ -796,5 +814,5 @@ app.get("/api/colors/:colorName", (req,res) => {
 });
 
 // LISTEN
-http.listen(8000);
+https.listen(8000);
 
