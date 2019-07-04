@@ -814,5 +814,5 @@ app.get("/api/colors/:colorName", (req,res) => {
 });
 
 // LISTEN
-http.listen(8000);
+http.listen(process.env.PORT);
 

@@ -4,9 +4,9 @@ const Color = require('./Color');
 
 const Sequelize = require('sequelize');
 
-const sequelize = new Sequelize('DATABASE','postgres','',
-  { host: process.env.DATABASE_URL, dialect: 'postgres' });
-
+const sequelize = new Sequelize(process.env.DATABASE_URL,
+  { dialect: 'postgres', protocol: 'postgres' });
+  
 class Furnishing extends Sequelize.Model { }
 Furnishing.init( {
   id: { allowNull: false, primaryKey: true, autoIncrement: false, type: Sequelize.UUID, defaultValue: uuid() },
