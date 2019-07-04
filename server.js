@@ -10,12 +10,20 @@ const app = express();
 const http = require('http').createServer(app);
 const Cookies = require('cookies');
 const cookie = require('cookie');
+const cors = require('cors');
 const io = require('socket.io')(http);
 require('dotenv').config();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const uuid = require('uuid/v4');
+
 app.use(bodyParser.json());
+app.use(cors({
+  origin: "https://roombuilder.herokuapp.com",
+  methods: ['GET','POST','PATCH','DELETE'],
+  allowedHeaders: ['Content-Type','Authorization'],
+  credentials: true
+}));
 
 // models
 const User = require('./models/User');
