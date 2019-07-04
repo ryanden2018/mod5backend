@@ -23,7 +23,8 @@ app.use(cors({
   methods: ['GET','POST','PATCH','DELETE','PUT','OPTIONS','HEAD'],
   allowedHeaders: 'Content-Type,Authorization,Content-Length,X-Requested-With,X-Prototype-Version,Origin,Allow,*',
   credentials: true,
-  maxAge: 1728000
+  maxAge: 1728000,
+  preflightContinue: false
 }));
 
 // models
