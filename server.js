@@ -19,7 +19,7 @@ const uuid = require('uuid/v4');
 
 app.use(bodyParser.json());
 app.use(cors({
-  origin: "https://roombuilder.herokuapp.com",
+  origin: ["https://roombuilder.herokuapp.com","http://roombuilder.herokuapp.com"],
   methods: ['GET','POST','PATCH','DELETE','PUT','OPTIONS','HEAD'],
   allowedHeaders: 'Content-Type,Authorization,Content-Length,X-Requested-With,X-Prototype-Version,Origin,Allow,*',
   credentials: true,
