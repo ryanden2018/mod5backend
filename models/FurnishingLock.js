@@ -3,9 +3,9 @@ const User = require('./User');
 
 const Sequelize = require('sequelize');
 
-const sequelize = new Sequelize('DATABASE','postgres','',
-  { host: process.env.DATABASE_URL, dialect: 'postgres' });
-
+const sequelize = new Sequelize(process.env.DATABASE_URL,
+  { dialect: 'postgres', protocol: 'postgres' });
+  
 class FurnishingLock extends Sequelize.Model { }
 FurnishingLock.init( {
   furnishingId: { type: Sequelize.UUID, allowNull: false, unique: true },

@@ -3,8 +3,8 @@ const Room = require('./Room');
 
 const Sequelize = require('sequelize');
 
-const sequelize = new Sequelize('DATABASE','postgres','',
-  { host: process.env.DATABASE_URL, dialect: 'postgres' });
+const sequelize = new Sequelize(process.env.DATABASE_URL,
+  { dialect: 'postgres', protocol: 'postgres' });
   
 class UserRoom extends Sequelize.Model { }
 UserRoom.init({
