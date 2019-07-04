@@ -7,10 +7,10 @@ const app = express();
 //   key: fs.readFileSync('../server.key'), // REPLACE
 //   cert: fs.readFileSync('../server.cert') // REPLACE
 // },app);
-const https = require('https').createServer(app);
+const http = require('http').createServer(app);
 const Cookies = require('cookies');
 const cookie = require('cookie');
-const io = require('socket.io')(https);
+const io = require('socket.io')(http);
 require('dotenv').config();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -814,5 +814,5 @@ app.get("/api/colors/:colorName", (req,res) => {
 });
 
 // LISTEN
-https.listen(8000);
+http.listen(8000);
 
