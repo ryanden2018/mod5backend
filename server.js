@@ -13,7 +13,7 @@ const jwt = require('jsonwebtoken');
 const uuid = require('uuid/v4');
 
 const clientURL = 'furnitureinmotion.herokuapp.com';
-
+app.use(bodyParser.urlencoded({extended:true}));
 app.use(bodyParser.json());
 app.use(cors({
   origin: ( process.env.DATABASE_URL ? [`https://${clientURL}`,`http://${clientURL}`] : "http://localhost:3000" ),
