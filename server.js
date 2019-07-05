@@ -1,4 +1,3 @@
-const fs = require('fs');
 const NodeRSA = require('node-rsa');
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -20,7 +19,7 @@ app.use(cors({
   allowedHeaders: 'Content-Type,Authorization,Content-Length,X-Requested-With,X-Prototype-Version,Origin,Allow,*',
   credentials: true,
   maxAge: 7200000,
-  preflightContinue: false
+  preflightContinue: true
 }));
 
 // models
