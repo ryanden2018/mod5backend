@@ -12,14 +12,16 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const uuid = require('uuid/v4');
 
+const clientURL = 'furnitureinmotion.herokuapp.com';
+
 app.use(bodyParser.json());
 app.use(cors({
-  origin: ( process.env.DATABASE_URL ? ["https://movethatsofa.herokuapp.com","http://movethatsofa.herokuapp.com"] : "http://localhost:3000" ),
+  origin: ( process.env.DATABASE_URL ? [`https://${clientURL}`,`http://${clientURL}`] : "http://localhost:3000" ),
   methods: ['GET','POST','PATCH','DELETE','PUT','OPTIONS','HEAD'],
   allowedHeaders: 'Content-Type,Authorization,Content-Length,X-Requested-With,X-Prototype-Version,Origin,Allow,*',
   credentials: true,
   maxAge: 7200000,
-  preflightContinue: true
+  preflightContinue: false
 }));
 
 // models
@@ -353,7 +355,7 @@ app.post('/api/login', function(req,res) {
               signOptions);
               var cookies = new Cookies(req,res,{keys:[COOKIESECRET]})
               cookies.set('rmbrAuthToken', token, {maxAge: 7000000,signed: true,httpOnly: true, overwrite: true});
-              return res.status(200).json({success: "Approved"})
+              return res.redirect(`https://${clientURL}`)
             } else {
               res.status(401).json({failed:"Unauthorized"});
             }
