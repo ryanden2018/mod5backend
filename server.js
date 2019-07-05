@@ -336,7 +336,6 @@ app.post('/api/users', function(req,res) {
 // login
 // req.body: {username:..., password:...}
 app.post('/api/login', function(req,res) {
-  console.log(req.body)
   User.User.findAll({where:{username:req.body.username}})
   .then(
     users => {
