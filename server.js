@@ -3,10 +3,6 @@ const NodeRSA = require('node-rsa');
 const express = require('express');
 const bodyParser = require('body-parser');
 const app = express();
-// const https = require('https').createServer({
-//   key: fs.readFileSync('../server.key'), // REPLACE
-//   cert: fs.readFileSync('../server.cert') // REPLACE
-// },app);
 const http = require('http').createServer(app);
 const Cookies = require('cookies');
 const cookie = require('cookie');
@@ -19,7 +15,7 @@ const uuid = require('uuid/v4');
 
 app.use(bodyParser.json());
 app.use(cors({
-  origin: ["https://roombuilder.herokuapp.com","http://roombuilder.herokuapp.com"],
+  origin: ( process.env.DATABASE_URL ? ["https://roombuilder.herokuapp.com","http://roombuilder.herokuapp.com"] : "http://localhost:3000" ),
   methods: ['GET','POST','PATCH','DELETE','PUT','OPTIONS','HEAD'],
   allowedHeaders: 'Content-Type,Authorization,Content-Length,X-Requested-With,X-Prototype-Version,Origin,Allow,*',
   credentials: true,
@@ -824,5 +820,5 @@ app.get("/api/colors/:colorName", (req,res) => {
 });
 
 // LISTEN
-http.listen(process.env.PORT);
+http.listen(process.env.PORT || 8000);
 
