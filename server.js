@@ -354,8 +354,8 @@ app.post('/api/login', function(req,res) {
               }, privateKey,
               signOptions);
               var cookies = new Cookies(req,res,{keys:[COOKIESECRET]})
-              cookies.set('rmbrAuthToken', token, {maxAge: 7000000,signed: true,httpOnly: true, secure:true,overwrite: true});
-              return res.redirect(`http${process.env.DATABASE_URL ? 's' : ''}://${clientURL}`)
+              cookies.set('rmbrAuthToken', token, {maxAge: 7000000,signed: true,httpOnly: true, secure:false,overwrite: true});
+              return res.redirect(`http${process.env.DATABASE_URL ? '' : ''}://${clientURL}`)
             } else {
               res.status(401).json({failed:"Unauthorized"});
             }
@@ -388,7 +388,7 @@ app.get("/api/loggedin", function(req,res) {
 // logout from app
 app.delete("/api/login", function(req,res) {
   var cookies = new Cookies(req,res,{keys:[COOKIESECRET]})
-  cookies.set('rmbrAuthToken', "", {signed: true,maxAge: 7000000,httpOnly:true,secure:true,overwrite:true});
+  cookies.set('rmbrAuthToken', "", {signed: true,maxAge: 7000000,httpOnly:true,secure:false,overwrite:true});
   res.json({success:"logged out"});
 });
 
