@@ -12,7 +12,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const uuid = require('uuid/v4');
 
-const clientURL = ( process.env.DATABASE_URL ? 'furnitureinmotion.herokuapp.com' : 'localhost:3000' );
+const clientURL = ( process.env.DATABASE_URL ? 'spaceplanner3d.herokuapp.com' : 'localhost:3000' );
 app.use(bodyParser.urlencoded({extended:true}));
 app.use(bodyParser.json());
 app.use(cors({
