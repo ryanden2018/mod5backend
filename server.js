@@ -66,6 +66,14 @@ function verifyAuthCookie(socket,successCallback,failureCallback = () => { }) {
     } else {
       failureCallback();
     }
+  } else if(socket && socket.handshake && socket.handshake.query && socket.handshake.query.token) {
+    jwt.verify(socket.handshake.query.token,publicKey,verifyOptions,(err,results) => {
+      if(results && !err) {
+        successCallback(results.id);
+      } else {
+        failureCallback();
+      }
+    });
   } else {
     failureCallback();
   }
@@ -306,8 +314,16 @@ async function getId(username) {
 
 // extract authorization token from req
 function getToken(req,res) {
-  var cookies = new Cookies(req,res,{keys:[COOKIESECRET]});
-  return cookies.get('rmbrAuthToken', {signed:true});
+  let cookies = new Cookies(req,res,{keys:[COOKIESECRET]});
+  let cookieToken = cookies.get('rmbrAuthToken', {signed:true});
+  if(cookieToken) {
+    return cookieToken;
+  } else {
+    let authorization = req.headers.authorization;
+    if(authorization && (authorization.split(" ").length > 1)) {
+      return authorization.split(" ")[1];
+    }
+  }
 }
 
 // create account (bcrypt)
@@ -355,8 +371,7 @@ app.post('/api/login', function(req,res) {
               signOptions);
               var cookies = new Cookies(req,res,{keys:[COOKIESECRET]})
               cookies.set('rmbrAuthToken', token, {maxAge: 7000000,signed: true,httpOnly: true,overwrite: true});
-              //return res.redirect(`http${process.env.DATABASE_URL ? 's' : ''}://${clientURL}`)
-              return res.status(200).json({success:"Approved"});
+              return res.status(200).json({success:"Approved",token:token});
             } else {
               res.status(401).json({failed:"Unauthorized"});
             }
