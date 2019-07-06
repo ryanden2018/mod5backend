@@ -12,11 +12,11 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const uuid = require('uuid/v4');
 
-const clientURL = 'furnitureinmotion.herokuapp.com';
+const clientURL = ( process.env.DATABASE_URL ? 'furnitureinmotion.herokuapp.com' : 'localhost:3000' );
 app.use(bodyParser.urlencoded({extended:true}));
 app.use(bodyParser.json());
 app.use(cors({
-  origin: ( process.env.DATABASE_URL ? [`https://${clientURL}`,`http://${clientURL}`] : "http://localhost:3000" ),
+  origin: ( process.env.DATABASE_URL ? [`https://${clientURL}`,`http://${clientURL}`] : `http://${clientURL}` ),
   methods: ['GET','POST','PATCH','DELETE','PUT','OPTIONS','HEAD'],
   allowedHeaders: 'Content-Type,Authorization,Content-Length,X-Requested-With,X-Prototype-Version,Origin,Allow,*',
   credentials: true,
@@ -354,8 +354,8 @@ app.post('/api/login', function(req,res) {
               }, privateKey,
               signOptions);
               var cookies = new Cookies(req,res,{keys:[COOKIESECRET]})
-              cookies.set('rmbrAuthToken', token, {maxAge: 7000000,signed: true,httpOnly: true, overwrite: true});
-              return res.redirect(`https://${clientURL}`)
+              cookies.set('rmbrAuthToken', token, {maxAge: 7000000,signed: true,httpOnly: true, secure:true,overwrite: true});
+              return res.redirect(`http${process.env.DATABASE_URL ? 's' : ''}://${clientURL}`)
             } else {
               res.status(401).json({failed:"Unauthorized"});
             }
@@ -388,7 +388,7 @@ app.get("/api/loggedin", function(req,res) {
 // logout from app
 app.delete("/api/login", function(req,res) {
   var cookies = new Cookies(req,res,{keys:[COOKIESECRET]})
-  cookies.set('rmbrAuthToken', "", {signed: true,maxAge: 7000000,httpOnly:true,overwrite:true});
+  cookies.set('rmbrAuthToken', "", {signed: true,maxAge: 7000000,httpOnly:true,secure:true,overwrite:true});
   res.json({success:"logged out"});
 });
 
