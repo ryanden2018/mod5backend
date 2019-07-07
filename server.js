@@ -371,7 +371,7 @@ app.post('/api/login', function(req,res) {
               signOptions);
               var cookies = new Cookies(req,res,{keys:[COOKIESECRET]})
               cookies.set('rmbrAuthToken', token, {maxAge: 7000000,signed: true,httpOnly: true,overwrite: true});
-              return res.status(200).json({success:"Approved",token:token});
+              return res.status(200).json({success:"Approved"});
             } else {
               res.status(401).json({failed:"Unauthorized"});
             }
