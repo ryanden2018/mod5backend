@@ -82,10 +82,10 @@ function socketCallback(socket) {
   // emits:
   //                  "loggedInResponse" either "logged in" or "not logged in"
   /////////////////////////////////////////////////////////////////////////////
-  socket.on("loggedIn",function(payload) {
+  socket.on("loggedInReconnectEvent",function(payload) {
     verifyAuthCookie(socket,
-      () => socket.emit("loggedInResponse","logged in"),
-      () => socket.emit("loggedInResponse","not logged in")
+      () => socket.emit("loggedInReconnectEventResponse","logged in"),
+      () => socket.emit("loggedInReconnectEventResponse","not logged in")
     );
   });
 
