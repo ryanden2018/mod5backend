@@ -75,6 +75,20 @@ function socketCallback(socket) {
     socket.leave(`room ${payload.roomId}`);
   });
 
+
+  /////////////////////////////////////////////////////////////////////////////
+  // check whether client is logged in - this should only be fired
+  // AFTER a successful reconnection
+  // emits:
+  //                  "loggedInResponse" either "logged in" or "not logged in"
+  /////////////////////////////////////////////////////////////////////////////
+  socket.on("loggedIn",function(payload) {
+    verifyAuthCookie(socket,
+      () => socket.emit("loggedInResponse","logged in"),
+      () => socket.emit("loggedInResponse","not logged in")
+    );
+  });
+
   /////////////////////////////////////////////////////////////////////////////
   // user requests a lock on furniture item (no authorization here, for speed,
   // but note that furniture ID is a uuid hence effectively impossible to guess,
