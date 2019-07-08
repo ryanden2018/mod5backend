@@ -4,6 +4,13 @@ const bcrypt = require('bcrypt');
 const genSecrets = require('../helpers/genSecrets');
 const Cookies = require('cookies');
 
+// loginCallback(req,res)
+// Log a user into the system
+//    req: request, must contain:
+//            req.body.username: username of user to log in as
+//            req.body.password: password of user to log in as
+//    res: response, will be JSON {success:"Approved"} if successful, in which case
+//                 JWT cookie will be automatically delivered to the client.
 function loginCallback(req,res) {
   User.User.findAll({where:{username:req.body.username}})
   .then(

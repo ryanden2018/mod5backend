@@ -4,6 +4,13 @@ const UserRoom = require('../models/UserRoom');
 const Room = require('../models/Room');
 const Furnishing = require('../models/Furnishing');
 
+// deleteUserCallback(req,res)
+// Delete a user and all their rooms (including furnishings inside those rooms)
+//   req: request, must contain:
+//             req.params.username: the username of the user to delete (can only be the
+//                                  currently logged in user)
+//             req must contain JWT cookie (see authorizeUser)
+//   res: response, will be JSON {success:"operation succeeded"} if successful
 function deleteUserCallback(req,res) {
   authorizeUser(req,res,req.params.username,
     () => {

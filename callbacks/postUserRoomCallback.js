@@ -3,6 +3,13 @@ const getId = require('../helpers/getId');
 const UserRoom = require('../models/UserRoom');
 
 
+// postUserRoomCallback(req,res)
+// Add a collaborator to a particular room. Only the owner of the room can do this.
+//   req: request, must contain:
+//               req.body.recipientUsername: the username of the user to add as collaborator
+//               req.body.roomId: the room upon which collaboration occurs
+//               req must contain JWT cookie
+//   res: response, will be {success: "operation complete"} upon successful post
 // req.body: {recipientUsername: ..., roomId: ...}
 function postUserRoomCallback(req,res) {
   authorizeUser(req,res,null, async (username) => {

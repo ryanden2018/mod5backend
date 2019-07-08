@@ -1,8 +1,16 @@
 const Room = require('../models/Room');
 const UserRoom = require('../models/UserRoom');
+const User = require('../models/User');
 const authorizeUser = require('../helpers/authorizeUser');
 const Furnishing = require('../models/Furnishing');
 
+// deleteRoomCallback(req,res)
+// Delete a room and all furnishings contained inside it. Only the owner of a
+// room is authorized to delete it.
+//   req: request, must contain:
+//                req.params.id: ID of the room to delete
+//                req must contain JWT cookie (see authorizeUser)
+//   res: response, will be JSON {success: "operation completed"} if successful
 function deleteRoomCallback(req,res) {
   Room.Room.findByPk(req.params.id)
   .then( room => {

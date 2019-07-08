@@ -3,7 +3,13 @@ const getId = require('../helpers/getId');
 const UserRoom = require('../models/UserRoom');
 const Furnishing = require('../models/Furnishing');
 
-// req.body: {furnishing: { type: ..., posx: ..., posy: ..., theta: ..., roomId: ..., color: ... } }
+// postFurnishingCallback(req,res)
+// Create a new furnishing.
+//   req: request, must contain:
+//            req.body: an object of the form
+//                  {furnishing: { type: ..., posx: ..., posy: ..., theta: ..., roomId: ..., color: ... } }
+//            request must contain a JWT cookie
+//   res: response, will be JSON of the new furnishing upon successful post
 function postFurnishingCallback(req,res) {
   authorizeUser(req,res,null, async (username) => {
     var userId = await getId(username);

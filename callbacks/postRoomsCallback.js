@@ -1,6 +1,15 @@
 const authorizeUser = require('../helpers/authorizeUser');
+const getId = require('../helpers/getId');
+const Room = require('../models/Room');
+const UserRoom = require('../models/UserRoom');
 
-// req.body: {room: {name: ..., length:..., width:..., height:...} }
+// postRoomsCallback(req,res)
+// Create a new room.
+//    req: request, must contain:
+//                req.body: an object of the form
+//                     {room: {name: ..., length:..., width:..., height:...} }
+//                req must contain JWT cookie
+//    res: response, will be JSON of the new room upon successful post
 function postRoomsCallback(req,res) {
   authorizeUser(req,res,null, async (username) => {
     var id = await getId(username);

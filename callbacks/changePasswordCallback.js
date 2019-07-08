@@ -2,6 +2,14 @@ const User = require('../models/User');
 const authorizeUser = require('../helpers/authorizeUser');
 const bcrypt = require('bcrypt');
 
+// changePasswordCallback(req,res)
+// Change the current user's password
+//   req: request, must contain:
+//              req.params.username: current user
+//              req.body.currentPassword: current user's current password
+//              req.body.newPassword: current user's desired new password
+//              req must contain JWT cookie (see authorizeUser)
+//   res: response, will be JSON {success:"operation completed"} if successful
 function changePasswordCallback(req,res) {
   User.User.findAll({where:{username:req.params.username}})
   .then(

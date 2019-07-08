@@ -1,5 +1,10 @@
 const Color = require('../models/Color');
 
+// getColorByNameCallback(req,res)
+// Look-up color by name (to obtain RGB values)
+//   req: request, must contain:
+//               req.params.colorName: the name of the color to retrieve
+//   res: response, will be the JSON color object if found (see Color model)
 function getColorByNameCallback(req,res) {
   Color.Color.findAll({where:{name:req.params.colorName}})
   .then( colors => {

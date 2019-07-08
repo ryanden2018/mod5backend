@@ -2,6 +2,12 @@ const authorizeUser = require('../helpers/authorizeUser');
 const getId = require('../helpers/getId');
 const UserRoom = require('../models/UserRoom');
 
+// deleteUserRoomCallback(req,res)
+// Remove association between a user and a room they are invited to but *don't* own
+//   req: request, must contain:
+//             req.body.roomId: the ID of the room to de-associate from the current user
+//             req must contain a JWT cookie
+//   res: response, will be JSON {success: "operation completed"} if successful
 function deleteUserRoomCallback(req,res) {
   authorizeUser( req,res,null, async (username) => {
     var userId = await getId(username);

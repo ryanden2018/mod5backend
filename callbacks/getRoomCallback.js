@@ -3,6 +3,13 @@ const getId = require('../helpers/getId');
 const UserRoom = require('../models/UserRoom');
 const Room = require('../models/Room');
 
+
+// getRoomCallback(req,res)
+// Obtain a representation of a particular room
+//   req: request, must contain:
+//                 req.params.id: the ID of the room to fetch
+//                 req must contain a JWT cookie (see authorizeUser)
+//   res: response, will be JSON of an entry in the Room table (see Room model)
 function getRoomCallback(req,res) {
   authorizeUser(req,res,null,async (username) => {
     var userId = await getId(username);

@@ -2,7 +2,12 @@ const authorizeUser = require('../helpers/authorizeUser');
 const getId = require('../helpers/getId');
 const UserRoom = require('../models/UserRoom');
 
-
+// isOwnerCallback(req,res)
+// Find out whether or not the current user owns a particular room.
+//   req: request, must contain:
+//                   req.params.id: ID of a room
+//                   req must contain JWT cookie (see authorizeUser)
+//   res: response, JSON of {status: BOOLEAN}
 function isOwnerCallback(req,res) {
   authorizeUser(req,res,null, async (username) => {
     var userId = await getId(username);

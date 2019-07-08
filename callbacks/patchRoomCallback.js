@@ -2,7 +2,14 @@ const authorizeUser = require('../helpers/authorizeUser');
 const Room = require('../models/Room');
 
 
-// req.body: {room: {...}}
+// patchRoomCallback(req,res)
+// Update the properties of a room (see Room model)
+//   req: request, must contain:
+//              req.params.id: the ID of the room to update
+//              req.body: object of the form {room: {...}}
+//                           so req.body.room exists
+//              request must contain a JWT cookie
+//   res: response, will be JSON of the new room upon successful update
 function patchRoomCallback(req,res) {
   authorizeUser(req,res,null, async (username) => {
     var id = await getId(username);

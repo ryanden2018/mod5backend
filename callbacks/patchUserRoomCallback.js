@@ -2,8 +2,14 @@ const authorizeUser = require('../helpers/authorizeUser');
 const getId = require('../helpers/getId');
 const UserRoom = require('../models/UserRoom');
 
- // body: {roomId: ..., confirmed: ...}
- function patchUserRoomCallback(req,res) {
+// patchUserRoomCallback(req,res)
+// Set whether or not the user is a "confirmed" collaborator (note: this feature is
+// not in use in the current implementation).
+//    req: request, must contain:
+//              req.body: object of the form  {roomId: INTEGER, confirmed: BOOLEAN}
+//              req must contain JWT cookie (see authorizeUser)
+//    res: response, will be JSON {success: "operation completed"} upon successful update
+function patchUserRoomCallback(req,res) {
   authorizeUser( req, res, null, async (username) => {
     var userId = await getId(username);
     var roomId = req.body.roomId;
