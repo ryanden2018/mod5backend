@@ -11,7 +11,7 @@ if(process.env.DATABASE_URL) {
   
 class Room extends Sequelize.Model { }
 Room.init( {
-  name: {type: Sequelize.STRING, allowNull: false},
+  name: {type: Sequelize.STRING, allowNull: false, unique: true},
   length: {type: Sequelize.FLOAT, allowNull: false},
   width: {type: Sequelize.FLOAT, allowNull: false},
   height: {type: Sequelize.FLOAT, allowNull: false}
