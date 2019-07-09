@@ -5,6 +5,7 @@ const User = require('../models/User');
 const UserRoom = require('../models/UserRoom');
 const Furnishing = require('../models/Furnishing');
 const FurnishingLock = require('../models/FurnishingLock');
+const persistRoom = require('../helpers/persistRoom');
 
 // verifyAuthCookie(socket,successCallback,failureCallback = () => {})
 // Check whether the socket headers contain a valid JWT auth cookie. This is
@@ -118,6 +119,110 @@ function socketCallback(socket) {
       socket.emit("lockResponse","denied");
     });
   });
+
+  /////////////////////////////////////////////////////////////////////////////
+  // notify every client to push the room to the undo stack
+  // emits to room:
+  //                  "pushRoomToUndoStack" passing on the payload
+  /////////////////////////////////////////////////////////////////////////////
+  socket.on("pushRoomToUndoStack",function(payload) {
+    verifyAuthCookie(socket, userId => {
+      let rooms = Object.keys(socket.rooms);
+      let roomStr = rooms.find( room => room.match(/room \d+/))
+      if(roomStr) {
+        let roomId = parseInt(roomStr.split(" ")[1])
+        socket.to(`room ${roomId}`).emit("pushRoomToUndoStack",payload);
+      }
+    });
+  });
+
+  /////////////////////////////////////////////////////////////////////////////
+  // notify every client to push the room to the redo stack
+  // emits to room:
+  //                  "pushRoomToRedoStack" passing on the payload
+  /////////////////////////////////////////////////////////////////////////////
+  socket.on("pushRoomToRedoStack",function(payload) {
+    verifyAuthCookie(socket, userId => {
+      let rooms = Object.keys(socket.rooms);
+      let roomStr = rooms.find( room => room.match(/room \d+/))
+      if(roomStr) {
+        let roomId = parseInt(roomStr.split(" ")[1])
+        socket.to(`room ${roomId}`).emit("pushRoomToRedoStack",payload);
+      }
+    });
+  });
+
+  /////////////////////////////////////////////////////////////////////////////
+  // notify every client to undo and persist payload to the room in DB
+  // payload:
+  //                   payload.room: the new room in object representation to persist to DB
+  // emits to room:
+  //                  "undo" passing on the payload
+  /////////////////////////////////////////////////////////////////////////////
+  socket.on("undo",function(payload) {
+    verifyAuthCookie(socket, userId => {
+      let rooms = Object.keys(socket.rooms);
+      let roomStr = rooms.find( room => room.match(/room \d+/))
+      if(roomStr) {
+        let roomId = parseInt(roomStr.split(" ")[1])
+        persistRoom(roomId,payload.room);
+        socket.to(`room ${roomId}`).emit("undo",payload);
+      }
+    });
+  });
+
+  /////////////////////////////////////////////////////////////////////////////
+  // notify every client to redo and persist payload to the room in DB
+  // payload:
+  //                  payload.room: the new room in object representation to persist to DB
+  // emits to room:
+  //                  "redo" passing on the payload
+  /////////////////////////////////////////////////////////////////////////////
+  socket.on("redo",function(payload) {
+    verifyAuthCookie(socket, userId => {
+      let rooms = Object.keys(socket.rooms);
+      let roomStr = rooms.find( room => room.match(/room \d+/))
+      if(roomStr) {
+        let roomId = parseInt(roomStr.split(" ")[1])
+        persistRoom(roomId,payload.room);
+        socket.to(`room ${roomId}`).emit("redo",payload);
+      }
+    });
+  });
+
+
+   /////////////////////////////////////////////////////////////////////////////
+  // notify every client to clear the undo stack
+  // emits to room:
+  //                  "clearUndoStack" passing on the payload
+  /////////////////////////////////////////////////////////////////////////////
+  socket.on("clearUndoStack",function(payload) {
+    verifyAuthCookie(socket, userId => {
+      let rooms = Object.keys(socket.rooms);
+      let roomStr = rooms.find( room => room.match(/room \d+/))
+      if(roomStr) {
+        let roomId = parseInt(roomStr.split(" ")[1])
+        socket.to(`room ${roomId}`).emit("clearUndoStack",payload);
+      }
+    });
+  });
+
+  /////////////////////////////////////////////////////////////////////////////
+  // notify every client to clear the redo stack
+  // emits to room:
+  //                  "clearRedoStack" passing on the payload
+  /////////////////////////////////////////////////////////////////////////////
+  socket.on("clearRedoStack",function(payload) {
+    verifyAuthCookie(socket, userId => {
+      let rooms = Object.keys(socket.rooms);
+      let roomStr = rooms.find( room => room.match(/room \d+/))
+      if(roomStr) {
+        let roomId = parseInt(roomStr.split(" ")[1])
+        socket.to(`room ${roomId}`).emit("clearRedoStack",payload);
+      }
+    });
+  });
+
 
   /////////////////////////////////////////////////////////////////////////////
   // user moves mouse while locked onto furniture item (does not persist!)
