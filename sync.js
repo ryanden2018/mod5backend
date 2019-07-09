@@ -4,9 +4,9 @@ const UserRoom = require('./models/UserRoom');
 const Color = require('./models/Color');
 const Furnishing = require('./models/Furnishing');
 const FurnishingLock = require('./models/FurnishingLock');
+const bcrypt = require('bcrypt');
 
-
-const forceSync = false;
+const forceSync = true;
 
 User.User.sync({force:forceSync})
 .then( () => {
