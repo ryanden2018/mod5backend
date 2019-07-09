@@ -23,13 +23,15 @@ function persistRoom(roomId,room) {
             {where: {id:furnishing.id,roomId:roomId} });
         }
       });
-    });
 
-    room.forEach( furnishing => {
-      if( !foundIds.includes(furnishing.id) ) {
-        Furnishing.Furnishing.create( {...furnishing, roomId:roomId} );
-      }
-    });
+      room.forEach( furnishing => {
+        if( !foundIds.includes(furnishing.id) ) {
+          Furnishing.Furnishing.create( {...furnishing, roomId:roomId} );
+        }
+      });
+    }).catch( () => { } );
+
+    
   }
 }
 
