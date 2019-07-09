@@ -5,7 +5,7 @@ const Color = require('./models/Color');
 const Furnishing = require('./models/Furnishing');
 const FurnishingLock = require('./models/FurnishingLock');
 
-const forceSync = true;
+const forceSync = false;
 
 User.User.sync({force:forceSync})
 .then( () => {
