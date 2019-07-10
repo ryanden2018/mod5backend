@@ -12,7 +12,7 @@ const persistRoom = require('../helpers/persistRoom');
 // used by all the socket events since the user must log in *before* the socket
 // is created (else the cookie header will not exist).
 //   socket: the current socket
-//   successCallback: calls this if user is logged in, with an argument of the user ID
+//   successCallback: calls this if user is logged in, with arguments of the user ID and username
 //   failureCallback: calls this otherwise, defaults to () => {}
 function verifyAuthCookie(socket,successCallback,failureCallback = () => { }) {
   if(socket && socket.request && socket.request.headers && socket.request.headers.cookie) {
@@ -20,7 +20,7 @@ function verifyAuthCookie(socket,successCallback,failureCallback = () => { }) {
     if(cookies.rmbrAuthToken) {
       jwt.verify(cookies.rmbrAuthToken,genSecrets.publicKey, genSecrets.verifyOptions, (err,results) => {
         if(results && !err) {
-          successCallback(results.id);
+          successCallback(results.id, results.username);
         } else {
           failureCallback();
         }
@@ -100,21 +100,25 @@ function socketCallback(socket) {
   //                "lockResponse" of either "approved" or "denied"
   /////////////////////////////////////////////////////////////////////////////
   socket.on("lockRequest", function(payload) {
-    verifyAuthCookie(socket, userId => {
-      // release stale locks
-      FurnishingLock.FurnishingLock.findAll()
-      .then( locks => {
-        locks.forEach( lock => {
-          if( (new Date())-lock.updatedAt > 2500 ) {
-            lock.destroy({force:true});
-          }
-        });
-      }).catch( () => { } )
+    verifyAuthCookie(socket, (userId,username) => {
+      if(username === "dummy") {
+        socket.emit("lockResponse","approved");
+      } else {
+        // release stale locks
+        FurnishingLock.FurnishingLock.findAll()
+        .then( locks => {
+          locks.forEach( lock => {
+            if( (new Date())-lock.updatedAt > 2500 ) {
+              lock.destroy({force:true});
+            }
+          });
+        }).catch( () => { } )
 
-      // create new lock
-      FurnishingLock.FurnishingLock.create({userId:userId,furnishingId:payload.furnishingId})
-      .then(() => socket.emit("lockResponse","approved"))
-      .catch(() => socket.emit("lockResponse","denied"));
+        // create new lock
+        FurnishingLock.FurnishingLock.create({userId:userId,furnishingId:payload.furnishingId})
+        .then(() => socket.emit("lockResponse","approved"))
+        .catch(() => socket.emit("lockResponse","denied"));
+      }
     }, () => {
       socket.emit("lockResponse","denied");
     });
@@ -270,17 +274,21 @@ function socketCallback(socket) {
   //               "lockRefreshResponse" of either "approved" or "denied"
   /////////////////////////////////////////////////////////////////////////////
   socket.on("lockRefresh", function(payload) {
-    verifyAuthCookie(socket, userId => {
-      FurnishingLock.FurnishingLock.findAll({where:{userId:userId}})
-      .then( locks => {
-        if(locks.length > 0) {
-          var lock = locks[0];
-          lock.update({refreshes: lock.refreshes+1});
-          socket.emit("lockRefreshResponse","approved");
-        } else {
-          socket.emit("lockRefreshResponse","denied");
-        }
-      }).catch( () => socket.emit("lockRefreshResponse","denied") );
+    verifyAuthCookie(socket, (userId,username) => {
+      if(username === "dummy") {
+        socket.emit("lockRefreshResponse","approved");
+      } else {
+        FurnishingLock.FurnishingLock.findAll({where:{userId:userId}})
+        .then( locks => {
+          if(locks.length > 0) {
+            var lock = locks[0];
+            lock.update({refreshes: lock.refreshes+1});
+            socket.emit("lockRefreshResponse","approved");
+          } else {
+            socket.emit("lockRefreshResponse","denied");
+          }
+        }).catch( () => socket.emit("lockRefreshResponse","denied") );
+      }
     });
   });
 
