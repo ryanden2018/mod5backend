@@ -274,7 +274,7 @@ function socketCallback(socket) {
       } else {
         redis.get(payload.furnishingId)
         .then( result => {
-          if(result === userId) {
+          if(parseInt(result) === parseInt(userId)) {
             redis.set(payload.furnishingId, userId, 'PX', 2500);
             socket.emit("lockRefreshResponse","approved");
           } else {
