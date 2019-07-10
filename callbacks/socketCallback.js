@@ -164,9 +164,21 @@ function socketCallback(socket) {
       let rooms = Object.keys(socket.rooms);
       let roomStr = rooms.find( room => room.match(/room \d+/))
       if(roomStr) {
-        let roomId = parseInt(roomStr.split(" ")[1])
-        persistRoom(roomId,payload.room);
-        socket.to(`room ${roomId}`).emit("undo",payload);
+        let roomId = parseInt(roomStr.split(" ")[1]);
+        Furnishing.Furnishing.findAll({
+          where: { roomId: roomId }
+        }).then( furnishings => {
+          let furnishingIds = furnishings.map(furnishing => furnishing.id);
+          FurnishingLock.FurnishingLock.findAll({
+            where: {furnishingId: furnishingIds}
+          }).then( locks => {
+            if(locks.length === 0) {
+              persistRoom(roomId,payload.room);
+              socket.to(`room ${roomId}`).emit("undo",payload);
+              socket.emit("undo",payload);
+            }
+          }).catch( () => {} );
+        }).catch( () => {} );
       }
     });
   });
@@ -183,9 +195,21 @@ function socketCallback(socket) {
       let rooms = Object.keys(socket.rooms);
       let roomStr = rooms.find( room => room.match(/room \d+/))
       if(roomStr) {
-        let roomId = parseInt(roomStr.split(" ")[1])
-        persistRoom(roomId,payload.room);
-        socket.to(`room ${roomId}`).emit("redo",payload);
+        let roomId = parseInt(roomStr.split(" ")[1]);
+        Furnishing.Furnishing.findAll({
+          where: { roomId: roomId }
+        }).then( furnishings => {
+          let furnishingIds = furnishings.map(furnishing => furnishing.id);
+          FurnishingLock.FurnishingLock.findAll({
+            where: {furnishingId: furnishingIds}
+          }).then( locks => {
+            if(locks.length === 0) {
+              persistRoom(roomId,payload.room);
+              socket.to(`room ${roomId}`).emit("redo",payload);
+              socket.emit("redo",payload);
+            }
+          }).catch( () => {} );
+        }).catch( () => {} );
       }
     });
   });
@@ -309,6 +333,7 @@ function socketCallback(socket) {
               Furnishing.Furnishing.update({colorName:payload.colorName},
                 {where:{id:payload.furnishingId, roomId:roomId}} );
               socket.to(`room ${roomId}`).emit("colorUpdate",payload);
+              socket.emit("colorUpdate",payload);
             }
           })
           .catch( () => {} );
@@ -413,6 +438,7 @@ function socketCallback(socket) {
                 }
               }).catch( () => { } )
               socket.to(`room ${roomId}`).emit("delete",payload);
+              socket.emit("delete",payload);
             }
           })
           .catch( () => { } );
