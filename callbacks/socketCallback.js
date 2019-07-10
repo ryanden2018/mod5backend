@@ -4,8 +4,9 @@ const genSecrets = require('../helpers/genSecrets');
 const User = require('../models/User');
 const UserRoom = require('../models/UserRoom');
 const Furnishing = require('../models/Furnishing');
-const FurnishingLock = require('../models/FurnishingLock');
 const persistRoom = require('../helpers/persistRoom');
+const Redis = require('ioredis');
+const redis = new Redis( process.env.REDIS_URL || 6379 );
 
 // verifyAuthCookie(socket,successCallback,failureCallback = () => {})
 // Check whether the socket headers contain a valid JWT auth cookie. This is
@@ -104,20 +105,15 @@ function socketCallback(socket) {
       if(username === "dummy") {
         socket.emit("lockResponse","approved");
       } else {
-        // release stale locks
-        FurnishingLock.FurnishingLock.findAll()
-        .then( locks => {
-          locks.forEach( lock => {
-            if( (new Date())-lock.updatedAt > 2500 ) {
-              lock.destroy({force:true});
-            }
-          });
-        }).catch( () => { } )
-
-        // create new lock
-        FurnishingLock.FurnishingLock.create({userId:userId,furnishingId:payload.furnishingId})
-        .then(() => socket.emit("lockResponse","approved"))
-        .catch(() => socket.emit("lockResponse","denied"));
+        redis.get(payload.furnishingId)
+        .then( result => {
+          if(!result) {
+            redis.set(payload.furnishingId, userId, 'PX', 2500);
+            socket.emit("lockResponse","approved");
+          } else {
+            socket.emit("lockResponse","denied");
+          }
+        }).catch( () => socket.emit("lockResponse","denied") );
       }
     }, () => {
       socket.emit("lockResponse","denied");
@@ -173,15 +169,14 @@ function socketCallback(socket) {
           where: { roomId: roomId }
         }).then( furnishings => {
           let furnishingIds = furnishings.map(furnishing => furnishing.id);
-          FurnishingLock.FurnishingLock.findAll({
-            where: {furnishingId: furnishingIds}
-          }).then( locks => {
-            if(locks.length === 0) {
+          redis.mget(furnishingIds)
+          .then( result => {
+            if(!result.find( val => !!val ) ) {
               persistRoom(roomId,payload.room);
               socket.to(`room ${roomId}`).emit("undo",payload);
               socket.emit("undo",payload);
             }
-          }).catch( () => {} );
+          }).catch( () => { } );
         }).catch( () => {} );
       }
     });
@@ -204,15 +199,14 @@ function socketCallback(socket) {
           where: { roomId: roomId }
         }).then( furnishings => {
           let furnishingIds = furnishings.map(furnishing => furnishing.id);
-          FurnishingLock.FurnishingLock.findAll({
-            where: {furnishingId: furnishingIds}
-          }).then( locks => {
-            if(locks.length === 0) {
+          redis.mget(furnishingIds)
+          .then( result => {
+            if(!result.find( val => !!val ) ) {
               persistRoom(roomId,payload.room);
               socket.to(`room ${roomId}`).emit("redo",payload);
               socket.emit("redo",payload);
             }
-          }).catch( () => {} );
+          }).catch( () => { } );
         }).catch( () => {} );
       }
     });
@@ -278,11 +272,10 @@ function socketCallback(socket) {
       if(username === "dummy") {
         socket.emit("lockRefreshResponse","approved");
       } else {
-        FurnishingLock.FurnishingLock.findAll({where:{userId:userId}})
-        .then( locks => {
-          if(locks.length > 0) {
-            var lock = locks[0];
-            lock.update({refreshes: lock.refreshes+1});
+        redis.get(payload.furnishingId)
+        .then( result => {
+          if(result === userId) {
+            redis.set(payload.furnishingId, userId, 'PX', 2500);
             socket.emit("lockRefreshResponse","approved");
           } else {
             socket.emit("lockRefreshResponse","denied");
@@ -301,13 +294,8 @@ function socketCallback(socket) {
   /////////////////////////////////////////////////////////////////////////////
   socket.on("lockRelease", function(payload) {
     verifyAuthCookie(socket, userId => {
-      FurnishingLock.FurnishingLock.findAll({ where: {userId: userId} })
-      .then( locks => {
-        locks.forEach( lock => {
-          lock.destroy({force:true}).catch(() => { });
-        });
-      }).catch( () => { } );
       if(payload && payload.furnishing) {
+        redis.del(payload.furnishing.id);
         let rooms = Object.keys(socket.rooms);
         let roomStr = rooms.find( room => room.match(/room \d+/))
         if(roomStr) {
@@ -321,7 +309,7 @@ function socketCallback(socket) {
   });
 
   /////////////////////////////////////////////////////////////////////////////
-  // user update color of furniture item -- update the DB and notify othe rusers
+  // user update color of furniture item -- update the DB and notify other users
   // payload:
   //              payload.furnishingId : the ID (uuid) of the furnishing to update
   //              payload.colorName : the new color name from the Color table
@@ -335,16 +323,15 @@ function socketCallback(socket) {
         let roomStr = rooms.find( room => room.match(/room \d+/))
         if(roomStr) {
           let roomId = parseInt(roomStr.split(" ")[1])
-          FurnishingLock.FurnishingLock.findAll({where:{furnishingId:payload.furnishingId}})
-          .then( locks => {
-            if(locks.length === 0) {
+          redis.get(payload.furnishingId)
+          .then( result => {
+            if(!result) {
               Furnishing.Furnishing.update({colorName:payload.colorName},
-                {where:{id:payload.furnishingId, roomId:roomId}} );
+                  {where:{id:payload.furnishingId, roomId:roomId}} );
               socket.to(`room ${roomId}`).emit("colorUpdate",payload);
               socket.emit("colorUpdate",payload);
             }
-          })
-          .catch( () => {} );
+          }).catch(() => { } );
         }
       }
     });
@@ -435,9 +422,10 @@ function socketCallback(socket) {
         let roomStr = rooms.find( room => room.match(/room \d+/))
         if(roomStr) {
           let roomId = parseInt(roomStr.split(" ")[1])
-          FurnishingLock.FurnishingLock.findAll({where:{furnishingId:payload.furnishingId}})
-          .then( locks => {
-            if(locks.length === 0) {
+
+          redis.get(payload.furnishingId)
+          .then( result => {
+            if(!result) {
               Furnishing.Furnishing.findAll( { where: { id: payload.furnishingId, roomId: roomId } } )
               .then( furnishings => {
                 if(furnishings.length > 0) {
@@ -448,8 +436,7 @@ function socketCallback(socket) {
               socket.to(`room ${roomId}`).emit("delete",payload);
               socket.emit("delete",payload);
             }
-          })
-          .catch( () => { } );
+          }).catch( () => { } );
         }
       }
     });
