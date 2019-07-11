@@ -7,6 +7,7 @@ const FurnishingLock = require('./models/FurnishingLock');
 
 const forceSync = false;
 
+
 User.User.sync({force:forceSync})
 .then( () => {
   Room.Room.sync({force:forceSync})
