@@ -124,4 +124,9 @@ app.get("/api/colors/:colorName", getColorByNameCallback);
 // LISTEN
 http.listen(process.env.PORT || 8000);
 
-// 
+// redirects
+
+app.get("/main", (req,res) => res.redirect("/") );
+app.get("/login", (req,res) => res.redirect("/") );
+app.get("/signup", (req,res) => res.redirect("/") );
+app.get("/manageAccount", (req,res) => res.redirect("/") );
