@@ -21,6 +21,8 @@ app.use(cors({
   preflightContinue: false
 }));
 
+app.use(express.static('build'))
+
 // callbacks
 const socketCallback = require('./callbacks/socketCallback');
 const createAccountCallback = require('./callbacks/createAccountCallback');
@@ -121,3 +123,5 @@ app.get("/api/colors/:colorName", getColorByNameCallback);
 
 // LISTEN
 http.listen(process.env.PORT || 8000);
+
+// 
